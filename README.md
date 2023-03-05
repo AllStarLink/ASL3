@@ -22,13 +22,13 @@ Alpha testers are encouraged to use the latest version of Debian for testing.  A
 
 Configuration files from previous versions of ASL app_rpt are not compatible with the ASL3.  Some of the “conf” files may appear the same, while others will look completely different.
 
-### Step 1
+Much of these instructions are from Naveen's repo with added detail for newbees.
 
-Install the phreaknet script.
+### Install the phreaknet script.
 ```
 cd /usr/src && wget https://docs.phreaknet.org/script/phreaknet.sh && chmod +x phreaknet.sh && ./phreaknet.sh make
 ```
-Next install Asterisk in developer mode
+### Install Asterisk in developer mode
 - The -t is for backtraces and thread debug. Use -b for backtraces only
 - The -s is for sip if you need it still, leave off the -s if you don’t
 - The -d is for DAHDI and is required
@@ -37,8 +37,8 @@ phreaknet install -t -s -d
 ```
 Asterisk should be running at this point but not app_rpt. Now would be a good idea to check with `asterisk -r`. If so, congrats. Time to move on to the fun stuff.
 
-### Step 2
-Clone the ASL3 repo. As you follow the installation procedures, you will be prompted for a username and password.  Your username will be your github username.  Use your access token for the password.  
+### Clone the ASL3 repo
+As you follow the installation procedures, you will be prompted for a username and password.  Your username will be your github username.  Use your access token for the password.  
 
 ```
 sudo apt-get update
@@ -54,13 +54,13 @@ This will save your git credentials next time you use them.
 git config —-global credential.helper store
 ```
 
-Install ASL3
+### Install ASL3
 ```
 cd app_rpt
 ./rpt_install.sh
 ```
 
-Copy default ASL3 configs
+### Copy default ASL3 configs
 ```
 cp /usr/src/app_rpt/configs/rpt/* /etc/asterisk
 ```
@@ -74,21 +74,10 @@ asterisk -rx "rpt localnodes"
 ```
 You should see node 1999. If so, you are now ready to configure your node.  
 
-### Node Updater
-Because ASL3 alpha includes DNS IP address resoultion the node updater is not needed. However, for testing installing the node updater is recommended.
-
-```
-apt install curl gpg
-cd /tmp
-wget http://apt.allstarlink.org/repos/asl_builds/install-allstarlink-repository
-chmod +x install-allstarlink-repository
-./install-allstarlink-repository
-apt -y install asl-update-node-list
-```
-
+## ASL Configuration
 The alpha does not include Allmon, Supermon or the asl-menu. All configuration must be done with the editor of your choice.
 
-#### HTTP Registration
+### HTTP Registration
 AllStarLink registration in moving from IAX to HTTP registration.  IAX registration will remain in chan_iax as part of Asterisk but will be removed from the AllStarLink servers at some far-off day. The module res_rpt_http_registrations handles http registrations, chan_iax still handels IAX registration. Please use and test either but do not configure both at the same time. 
 
 HTTP refistration is configured by editing /etc/asterisk/rpt_http_registrations.conf.
@@ -103,7 +92,20 @@ Change the register => line to match your assigned node number and password.
 
 ```
 
-#### Rpt.conf Template Explained
+### Node Updater
+Because ASL3 alpha includes DNS IP address resoultion the node updater is not needed. However, for testing installing the node updater is recommended.
+
+```
+apt install curl gpg
+cd /tmp
+wget http://apt.allstarlink.org/repos/asl_builds/install-allstarlink-repository
+chmod +x install-allstarlink-repository
+./install-allstarlink-repository
+apt -y install asl-update-node-list
+
+```
+
+### Rpt.conf Template Explained
 
 The app_rpt configuration file now makes use of asterisk templates.  This is a new concept for app_rpt users.  
 
@@ -139,7 +141,7 @@ rxchannel = Radio/usb_1999       ; USBRadio (DSP)
 
 Entries that are added below `[1999](node-main)` override or add to the default settings.  You will notice that `rxchannel = Radio/usb_1999` was added here to override the default found in the template.  The same goes for startup_macro. If uncommented, it overrides the default in the template.
 
-##### Rpt.conf Edits
+### Rpt.conf Edits
 The rpt.conf file is documented with comments to help you make changes.  Please review the comments in the file as you make edits to setup your node.
 
 After you have completed these changes, enter the command:
@@ -158,12 +160,12 @@ Since asl-menu is not available in the Alpha release, you will have to use one o
 Or
 `/usr/lib/asterisk/simpleusb-tune-menu`
 
-### New or updated rpt commands
+## New or updated app_rpt commands
 
-#### HTTP Registrations
+### HTTP Registrations
 `rpt show registrations`  is used to view your registration to the AllStarLink servers.
 
-#### DNS Lookup
+### DNS Lookup
 The software now implements DNS lookup of node information.  By default the software will now query the AllStarLink DNS servers first to resolve node information.  It will fall back to the external rpt_extnodes file if the node cannot be resolved by DNS.
 
 The operation of this ASL3 feature can be controlled by changing the following information in rpt.conf.
