@@ -10,6 +10,12 @@ The update from asterisk version 1.4 to 20.1.0 implements over 15 years of bug a
 
 As part of this update, app_rpt has been refactored to make the code base easier to maintain and enhance.  This process has been going on for over one year and will continue.  The app_rpt code base will meet all current asterisk® coding guidelines.
 
+*New Features and improvements* 
+- DNS IP address resoultion
+- HTTP AllStarLink registration
+- EchoLink and other module memory leaks addressed
+- Modules reload
+
 ## Install
 In order to test this version, you must be accepted as an alpha tester.  During the alpha testing phase the repository is private.  This will require you to have a username on Github.  You will also need a personal access token.  See creating an access token on github. 
 
@@ -38,7 +44,7 @@ cd /usr/src && wget https://docs.phreaknet.org/script/phreaknet.sh && chmod +x p
 Next install Asterisk in developer mode
 - The -t is for backtraces and thread debug. Use -b for backtraces only
 - The -s is for sip if you need it still, leave off the -s if you don’t
-- The -d is for and required
+- The -d is for DAHDI and is required
 ```
 phreaknet install -t -s -d
 ```
@@ -47,11 +53,13 @@ Asterisk should be running at this point but not app_rpt. Now would be a good id
 ### Step 2
 Install app_rpt
 ```
-cd /usr/src; git clone https://github.com/InterLinked1/app_rpt.git
+cd /usr/src
+git clone https://github.com/InterLinked1/app_rpt.git
 cd app_rpt
 ./rpt_install.sh
 cp /usr/src/app_rpt/configs/rpt/* /etc/asterisk #install our rpt configs
 ```
+
 ### Step 3
 Instructions for installing the node updater
 ```
@@ -71,10 +79,10 @@ asterisk -rx "rpt localnodes"
 ```
 You should see nide 1999. If so, you are now ready to configure your node.  
 
-The alpha procedure does not install Allmon, Supermon or the asl-menu. All configuration must be done with the editor of your choice.
+The alpha does not include Allmon, Supermon or the asl-menu. All configuration must be done with the editor of your choice.
 
 #### HTTP Registration
-Registration with the AllStarLink servers is no longer handled by the iax2 channel module.  The module res_rpt_http_registrations now handles the registrations.  It is configured by editing /etc/asterisk/rpt_http_registrations.conf.
+AllStarLink registration in moving from IAX to HTTP. IAX registration will remain in chan_iax but will be removed from the AllStarLink servers at some far off day. The ASL 2.0 beta supports both automatically.  beta The module res_rpt_http_registrations now handles the registrations.  It is configured by editing /etc/asterisk/rpt_http_registrations.conf.
 
 ```
 [general]
