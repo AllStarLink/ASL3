@@ -93,7 +93,7 @@ Change the register => line to match your assigned node number and password.
 ```
 
 ### Node Updater
-Because ASL3 alpha includes DNS IP address resoultion the node updater is not needed. However, for testing installing the node updater is recommended.
+Because ASL3 alpha includes DNS IP address resolution the node updater is not needed. However, for testing installing the node updater is recommended.
 
 ```
 apt install curl gpg
