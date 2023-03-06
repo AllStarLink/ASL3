@@ -24,12 +24,13 @@ Configuration files from previous versions of ASL app_rpt are not compatible wit
 
 Much of these instructions are from Naveen's repo with added detail for newbees.
 
-### Install the phreaknet script.
+### Install phreaknet script
 ```
 cd /usr/src && wget https://docs.phreaknet.org/script/phreaknet.sh && chmod +x phreaknet.sh && ./phreaknet.sh make
 ```
-### Install Asterisk in developer mode
-- The -t is for backtraces and thread debug. Use -b for backtraces only
+### Install Asterisk
+Use the phreaknet script to install Asterisk. Use -t or -b for developer mode. 
+- The -t is for backtraces and thread debug. Use -b for backtraces only, recommended on 386.
 - The -s is for sip if you need it still, leave off the -s if you don’t
 - The -d is for DAHDI and is required
 ```
@@ -37,7 +38,7 @@ phreaknet install -t -s -d
 ```
 Asterisk should be running at this point but not app_rpt. Now would be a good idea to check with `asterisk -r`. If so, congrats. Time to move on to the fun stuff.
 
-### Clone the ASL3 repo
+### Clone ASL3 repo
 As you follow the installation procedures, you will be prompted for a username and password.  Your username will be your github username.  Use your access token for the password.  
 
 ```
@@ -60,12 +61,13 @@ cd app_rpt
 ./rpt_install.sh
 ```
 
-### Copy default ASL3 configs
+### Install ASL3 configs
+This adds ASL3 configs to a full set of Asterisk configuration files. However, modules.conf limits what actually runs to a miminal ASL configuration. 
 ```
 cp /usr/src/app_rpt/configs/rpt/* /etc/asterisk
 ```
 
-reboot the system
+> reboot the system
 
 You should now have a complete ASL3 alpha install.
 
@@ -78,22 +80,21 @@ You should see node 1999. If so, you are now ready to configure your node.
 The alpha does not include Allmon, Supermon or the asl-menu. All configuration must be done with the editor of your choice.
 
 ### HTTP Registration
-AllStarLink registration in moving from IAX to HTTP registration.  IAX registration will remain in chan_iax as part of Asterisk but will be removed from the AllStarLink servers at some far-off day. The module res_rpt_http_registrations handles http registrations, chan_iax still handels IAX registration. Please use and test either but do not configure both at the same time. 
+AllStarLink registration is moving from IAX to HTTP registration.  IAX registration will remain in chan_iax as part of Asterisk but may be removed from the AllStarLink servers at some far-off day. The module res_rpt_http_registrations handles http registrations, chan_iax still handels IAX registration. Please use and test either but do not configure both at the same time.
 
-HTTP refistration is configured by editing /etc/asterisk/rpt_http_registrations.conf.
+HTTP registration is configured by editing /etc/asterisk/rpt_http_registrations.conf.
 
 ```
-[general]
+[General]
 
 [registrations]
+;Change the register => line to match your assigned node number and password.
 register => 1999:password@register.allstarlink.org    ; This must be changed to your node number, password
-
-Change the register => line to match your assigned node number and password.
-
 ```
 
+
 ### Node Updater
-Because ASL3 alpha includes DNS IP address resoultion the node updater is not needed. However, for testing installing the node updater is recommended.
+Because ASL3 alpha includes DNS IP address resoultion the node updater is not needed. However, for testing, installing the node updater is recommended.
 
 ```
 apt install curl gpg
