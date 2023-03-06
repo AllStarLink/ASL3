@@ -167,6 +167,9 @@ Or
 `rpt show registrations`  is used to view your registration to the AllStarLink servers.
 
 ### DNS Lookup
+Asterisk CLI comand `rpt lookup 2000` for example will show the IP address of node 2000.
+Linux CLI is `nslookup 2000.nodes.allstarlink.org`, for example. 
+
 The software now implements DNS lookup of node information.  By default the software will now query the AllStarLink DNS servers first to resolve node information.  It will fall back to the external rpt_extnodes file if the node cannot be resolved by DNS.
 
 The operation of this ASL3 feature can be controlled by changing the following information in rpt.conf.
@@ -179,8 +182,6 @@ node_lookup_method = both	;method used to lookup nodes
 					;file = external file lookup only
 ```
 The node lookup routines will output debug information showing the node lookups if the debug level is set to 4 or higher.
-
-The ASterisk CLI comand `rpt lookup 2000` for example will show the IP address of node 2000. IP address on the Linux CLI is `nslookup 2000.nodes.allstarlink.org`, for example. 
 
 This document was created by Danny Lloyd/KB4MDD
 
