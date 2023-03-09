@@ -94,7 +94,7 @@ register => 1999:password@register.allstarlink.org    ; This must be changed to 
 
 
 ### Node Updater
-Because ASL3 alpha includes DNS IP address resolution the node updater is not needed. However, for testing, installing the node updater is recommended.
+Because ASL3 alpha includes DNS IP address resolution the node updater is not needed. However, for testing installing the node updater is recommended.
 
 ```
 apt install curl gpg
