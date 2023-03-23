@@ -31,10 +31,10 @@ cd /usr/src && wget https://docs.phreaknet.org/script/phreaknet.sh && chmod +x p
 ### Install Asterisk
 Use the phreaknet script to install Asterisk. Use -t or -b for developer mode. 
 - The -t is for backtraces and thread debug. Use -b for backtraces only, recommended on 386.
-- The -s is for sip if you need it still, leave off the -s if you don’t
+- The -s is for sip. PJSIP is recommended as SIP was depreciated 5 years ago. PJSIP setup instructions are in this repo.   
 - The -d is for DAHDI and is required
 ```
-phreaknet install -t -s -d
+phreaknet install -t -d
 ```
 Asterisk should be running at this point but not app_rpt. Now would be a good idea to check with `asterisk -r`. If so, congrats. Time to move on to the fun stuff.
 
