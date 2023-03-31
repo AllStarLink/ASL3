@@ -5,7 +5,7 @@ Included are the files we've been using for years.
 ## Install
 As root or sudo
 - First move or remove /etc/init.d/asterisk
-- Copy the .system file to /lib/systems/system
+- Copy the .service file to /lib/systems/system
 - Copy the .sh files to /usr/sbin
 - Do a systemctl reload
 - Reboot
