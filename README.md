@@ -23,7 +23,7 @@ Configuration files from previous versions of ASL app_rpt are not compatible wit
 Much of these instructions are from Naveen's repo with added detail for newbees.
 
 ### Download OS
-Alpha testers are encouraged to use the latest version of Debian for testing. For Raspberry Pi use the Raspberry Pi Imager and install the OS Lite (32-bit) version.
+Alpha testers are encouraged to use the latest version of Debian for testing. For Raspberry Pi use the [Raspberry Pi Imager](https://www.raspberrypi.com/software/) and install the [OS Lite (32-bit)](https://github.com/AllStarLink/ASL3/blob/develop/RPiDebianDownload.png) version.
 
 ### Install phreaknet script
 ```
@@ -40,6 +40,7 @@ phreaknet install -t -d
 For Rasperry Pi
 ```
 CFLAGS=-Wno-error phreaknet install -b -s -d
+modprobe dahdi
 ```
 Asterisk should be running at this point but not app_rpt. Now would be a good idea to check with `asterisk -r`. If so, congrats. Time to move on to the fun stuff.
 
