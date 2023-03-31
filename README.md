@@ -18,23 +18,28 @@ As part of this update, app_rpt has been refactored to make the code base easier
 ## Install
 In order to test this version, you must be accepted as an alpha tester.  During the alpha testing phase the repository is private.  Contact Naveen on Slack for access to the private repo. You need a username on Github and a personal access token.  See creating an access token on github. 
 
-Alpha testers are encouraged to use the latest version of Debian for testing.  At this time, the asterisk application and app_rpt must be compiled from source code.  There are no prebuilt images.
-
 Configuration files from previous versions of ASL app_rpt are not compatible with the ASL3.  Some of the “conf” files may appear the same, while others will look completely different.
 
 Much of these instructions are from Naveen's repo with added detail for newbees.
+
+### Download OS
+Alpha testers are encouraged to use the latest version of Debian for testing. For Raspberry Pi use the Raspberry Pi Imager and install the OS Lite (32-bit) version.
 
 ### Install phreaknet script
 ```
 cd /usr/src && wget https://docs.phreaknet.org/script/phreaknet.sh && chmod +x phreaknet.sh && ./phreaknet.sh make
 ```
 ### Install Asterisk
-Use the phreaknet script to install Asterisk. Use -t or -b for developer mode. 
-- The -t is for backtraces and thread debug. Use -b for backtraces only, recommended on 386.
+Use the phreaknet script to install Asterisk. Use either -t or -b for developer mode. 
+- The -t is for backtraces and thread debug. Alternatively use -b for backtraces only, recommended on 386.
 - The -s is for sip. PJSIP is recommended as SIP was depreciated 5 years ago. PJSIP setup instructions are in this repo.   
 - The -d is for DAHDI and is required
 ```
 phreaknet install -t -d
+```
+For Rasperry Pi
+```
+CFLAGS=-Wno-error phreaknet install -b -s -d
 ```
 Asterisk should be running at this point but not app_rpt. Now would be a good idea to check with `asterisk -r`. If so, congrats. Time to move on to the fun stuff.
 
