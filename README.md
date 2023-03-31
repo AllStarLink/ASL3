@@ -80,7 +80,7 @@ You should now have a complete ASL3 alpha install.
 ```
 asterisk -rx "rpt localnodes"
 ```
-You should see node 1999. If so, you are now ready to configure your node.  
+You should see node 1999. If so, you are now ready to configure your node. 
 
 ## ASL Configuration
 The alpha does not include Allmon, Supermon or the asl-menu. All configuration must be done with the editor of your choice.
@@ -111,10 +111,12 @@ chmod +x install-allstarlink-repository
 apt -y install asl-update-node-list
 
 ```
+### Systemd Install
+See the post install [README.md](https://github.com/AllStarLink/ASL3/tree/develop/post_install#systemd-files).
 
-### Rpt.conf Template Explained
+# Asterisk Templates Explained
 
-The app_rpt configuration file now makes use of asterisk templates.  This is a new concept for app_rpt users.  
+The app_rpt configuration file now optionally makes use of asterisk templates.  This is a new concept for app_rpt users.  
 
 You will see the following in rpt.conf:
 
@@ -148,7 +150,7 @@ rxchannel = Radio/usb_1999       ; USBRadio (DSP)
 
 Entries that are added below `[1999](node-main)` override or add to the default settings.  You will notice that `rxchannel = Radio/usb_1999` was added here to override the default found in the template.  The same goes for startup_macro. If uncommented, it overrides the default in the template.
 
-### Rpt.conf Edits
+## Rpt.conf Edits
 The rpt.conf file is documented with comments to help you make changes.  Please review the comments in the file as you make edits to setup your node.
 
 After you have completed these changes, enter the command:
@@ -167,12 +169,12 @@ Since asl-menu is not available in the Alpha release, you will have to use one o
 Or
 `/usr/lib/asterisk/simpleusb-tune-menu`
 
-## New or updated app_rpt commands
+# New or updated app_rpt commands
 
-### HTTP Registrations
+## HTTP Registrations
 `rpt show registrations`  is used to view your registration to the AllStarLink servers.
 
-### DNS Lookup
+## DNS Lookup
 Asterisk CLI comand `rpt lookup 2000` for example will show the IP address of node 2000.
 Linux CLI is `nslookup 2000.nodes.allstarlink.org`, for example. 
 
@@ -189,6 +191,4 @@ node_lookup_method = both	;method used to lookup nodes
 ```
 The node lookup routines will output debug information showing the node lookups if the debug level is set to 4 or higher.
 
-This document was created by Danny Lloyd/KB4MDD
-
-
+This document was created by Danny Lloyd/KB4MDD and modified to death by WD6AWP
