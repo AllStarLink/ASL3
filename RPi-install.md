@@ -1,6 +1,6 @@
 # RPI install steps
 
-This is the short version. See README.md for full download and install steps.
+This is the short version. See the main README.md for full download and install steps.
 ```
 cd /usr/src && wget https://docs.phreaknet.org/script/phreaknet.sh && chmod +x phreaknet.sh && ./phreaknet.sh make
 CFLAGS=-Wno-error phreaknet install -b -s -d
