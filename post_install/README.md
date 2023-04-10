@@ -5,7 +5,8 @@ Included are the files we've been using for years.
 ## Install
 - cd
 - mv /etc/init.d/asterisk .
-- git clone 
+- git clone https://github.com/AllStarLink/ASL3.git
+- cd ASL3/post_install
 - cp -v asl-asterisk.service file /lib/systems/system
 - cp -v *.sh /usr/sbin
 - Do a `systemctl reload`
