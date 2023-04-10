@@ -48,8 +48,6 @@ Asterisk should be running at this point but not app_rpt. Now would be a good id
 As you follow the installation procedures, you will be prompted for a username and password.  Your username will be your github username.  Use your access token for the password.  
 
 ```
-sudo apt-get update
-sudo apt-get -y install git
 cd /usr/src
 git clone https://github.com/InterLinked1/app_rpt.git
 
