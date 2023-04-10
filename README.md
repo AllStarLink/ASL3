@@ -55,10 +55,10 @@ git clone https://github.com/InterLinked1/app_rpt.git
 
 ```
 
-This will save your git credentials next time you use them. 
+This will save your git credentials in your home directory next time you use them. 
 
 ```
-git config —-global credential.helper store
+git config credential.helper store
 ```
 
 ### Install ASL3
