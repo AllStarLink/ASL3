@@ -46,7 +46,7 @@ You'll need to reboot at this point.
 
 Asterisk should be running at this point but not app_rpt. Now would be a good idea to check with `asterisk -r`. If so, congrats. Time to move on to the fun stuff.
 
-### Clone ASL3 repo
+### Clone ASL3 Source
 As you follow the installation procedures, you will be prompted for a username and password.  Your username will be your github username.  Use your access token for the password.  
 
 ```
