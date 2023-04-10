@@ -3,10 +3,11 @@ The normal install of Asterisk installs an init script to start, stop and restar
 Included are the files we've been using for years.
 
 ## Install
-As root or sudo
-- First move or remove /etc/init.d/asterisk
-- Copy the .service file to /lib/systems/system
-- Copy the .sh files to /usr/sbin
+- cd
+- mv /etc/init.d/asterisk .
+- git clone 
+- cp -v asl-saterisk.service file /lib/systems/system
+- cp -v *.sh /usr/sbin
 - Do a `systemctl reload`
 - Reboot
 
