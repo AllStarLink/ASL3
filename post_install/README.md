@@ -6,7 +6,7 @@ Included are the files we've been using for years.
 - cd
 - mv /etc/init.d/asterisk .
 - git clone 
-- cp -v asl-saterisk.service file /lib/systems/system
+- cp -v asl-asterisk.service file /lib/systems/system
 - cp -v *.sh /usr/sbin
 - Do a `systemctl reload`
 - Reboot
