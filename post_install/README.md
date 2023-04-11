@@ -10,6 +10,7 @@ Included are the files we've been using for years.
  cd ASL3/post_install
  cp -v asl-asterisk.service file /lib/systems/system
  cp -v *.sh /usr/sbin
+ chmod +x /usr/sbin/ast*.sh
  systemctl daemon-reload
  systemctl enable asl-asterisk 
  reboot
