@@ -8,7 +8,7 @@ Included are the files we've been using for years.
  mv /etc/init.d/asterisk .
  git clone https://github.com/AllStarLink/ASL3.git
  cd ASL3/post_install
- cp -v asl-asterisk.service file /lib/systems/system
+ cp -v asl-asterisk.service /lib/systemd/system
  cp -v *.sh /usr/sbin
  chmod +x /usr/sbin/ast*.sh
  systemctl daemon-reload
