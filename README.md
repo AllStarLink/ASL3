@@ -35,11 +35,11 @@ Use the phreaknet script to install Asterisk. Use either -t or -b for developer 
 - The -s is for sip. PJSIP is recommended as SIP was depreciated 5 years ago. PJSIP setup instructions are in this repo.   
 - The -d is for DAHDI and is required
 ```
-phreaknet install -t -d
+phreaknet install -b -d
 ```
 For Rasperry Pi
 ```
-CFLAGS=-Wno-error phreaknet install -b -s -d
+CFLAGS=-Wno-error phreaknet install -b -d
 modprobe dahdi
 ```
 You'll need to reboot at this point.
