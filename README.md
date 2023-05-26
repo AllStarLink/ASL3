@@ -193,4 +193,16 @@ node_lookup_method = both	;method used to lookup nodes
 ```
 The node lookup routines will output debug information showing the node lookups if the debug level is set to 4 or higher.
 
+## Debugging
+
+Previously app_rpt and associated channels supported setting the debug level with an associated app / channel command.  These app / channel commands have been removed and replaced with the asterisk command: 
+
+**core set debug x module**
+
+Where x is the debug level and module is the number of the app or module.
+
+Example: **core set debug 5 app_rpt**
+
+
+
 This document was created by Danny Lloyd/KB4MDD and modified to death by WD6AWP
