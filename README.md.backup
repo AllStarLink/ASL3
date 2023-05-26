@@ -201,8 +201,8 @@ Previously app_rpt and associated channels supported setting the debug level wit
 
 Where x is the debug level and module is the name of the app or module.
 
-Example:  
-**core set debug 5 app_rpt**  
+Example:
+**core set debug 5 app_rpt**
 **core set debug 3 chan_echolink**
 
 
