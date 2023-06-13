@@ -193,6 +193,9 @@ node_lookup_method = both	;method used to lookup nodes
 ```
 The node lookup routines will output debug information showing the node lookups if the debug level is set to 4 or higher.
 
+## Echolink Show Nodes
+`echolink show nodes`  is used to view the currently connected echolink users.
+
 ## Debugging
 
 Previously app_rpt and associated channels supported setting the debug level with an associated app / channel command.  These app / channel commands have been removed and replaced with the asterisk command: 
