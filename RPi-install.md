@@ -157,9 +157,22 @@ Resolving deltas: 100% (1003/1003), done.
 bash rpt_install.sh
 ```
 
-* PLACEHOLDER: Do configurations in `/etc/asterisk`
+* Copy the stock configuration for ASL
+```
+cp /usr/src/app_rpt/configs/rpt/* /etc/asterisk
+```
 
 * Restart asterisk:
 ```
 systemctl stop asterisk && sleep 2 &&  systemctl start asterisk
 ```
+
+* Test the configuration:
+```
+asterisk -rx "rpt localnodes"
+```
+
+You should see node 1999. If so, you are now ready to configure your node.
+
+# Configuration
+[Continue the configuration here](https://github.com/AllStarLink/ASL3/tree/pi-install#asl-configuration)
