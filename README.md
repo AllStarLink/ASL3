@@ -12,6 +12,9 @@ As part of this update, app_rpt has been refactored to make the code base easier
 - DNS IP address resolution
 - HTTP AllStarLink registration
 - EchoLink and other module memory leaks addressed
+- EchoLink chat has been enabled
+- EchoLink now honors the app_rpt timeout timer.  A text message is sent to the client when they time out.
+- EchoLink will no longer allow clients to double.  A text message is sent to the client when they are doubling.
 - All modules reload or refresh 
 - Compile directives for more archicetures
 
@@ -209,8 +212,8 @@ Previously app_rpt and associated channels supported setting the debug level wit
 Where x is the debug level and module is the name of the app or module.
 
 Example:  
-**core set debug 5 app_rpt**  
-**core set debug 3 chan_echolink**
+**core set debug 5 app_rpt.so**  
+**core set debug 3 chan_echolink.so**
 
 
 This document was created by Danny Lloyd/KB4MDD and modified to death by WD6AWP
