@@ -73,6 +73,7 @@ term came from. The final version of ASL3 may or may not use this installation m
 
 * Install the phreaknet installation script:
 ```
+apt install -y git && \
 cd /usr/src && \
 wget https://docs.phreaknet.org/script/phreaknet.sh && \
 chmod +x phreaknet.sh && \
@@ -134,7 +135,6 @@ systemctl start asterisk
 * Pull down the app_rpt beta code. You will need to have [setup a GitHub access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) for your Github account.
 ```
 git clone https://github.com/InterLinked1/app_rpt.git
-cd app_rpt
 ```
 
 You should get output similar to:
@@ -154,6 +154,7 @@ Resolving deltas: 100% (1003/1003), done.
 
 * Build/install the apt_rpt system
 ```
+cd app_rpt
 bash rpt_install.sh
 ```
 
