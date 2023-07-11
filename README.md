@@ -26,7 +26,10 @@ Configuration files from previous versions of ASL app_rpt are not compatible wit
 Much of these instructions are from Naveen's repo with added detail for newbees.
 
 ### Download OS
-Alpha testers are encouraged to use the latest version of Debian for testing. For Raspberry Pi use the [Raspberry Pi Imager](https://www.raspberrypi.com/software/) and install the [OS Lite (32-bit)](https://github.com/AllStarLink/ASL3/blob/develop/RPiDebianDownload.png) version.
+Alpha testers are encouraged to use the latest version of Debian for testing.
+
+### For Raspberry Pi
+OS install instructions are at [Pi-instll.md](https://github.com/AllStarLink/ASL3/blob/develop/RPi-install.md) then come back by following the link at the end of the Pi-install.
 
 ### Install phreaknet script
 ```
