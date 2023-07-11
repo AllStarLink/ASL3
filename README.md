@@ -43,11 +43,6 @@ Use the phreaknet script to install Asterisk. Use either -t or -b for developer 
 ```
 phreaknet install -b -d
 ```
-For Rasperry Pi
-```
-CFLAGS=-Wno-error phreaknet install -b -d
-modprobe dahdi
-```
 You'll need to reboot at this point.
 
 Asterisk should be running at this point but not app_rpt. Now would be a good idea to check with `asterisk -r`. If so, congrats. Time to move on to the fun stuff.
