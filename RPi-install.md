@@ -176,4 +176,4 @@ asterisk -rx "rpt localnodes"
 You should see node 1999. If so, you are now ready to configure your node.
 
 # Configuration
-[Continue the configuration here](https://github.com/AllStarLink/ASL3/tree/develop#asl-configuration)
+[Continue to ASL Configuration](https://github.com/AllStarLink/ASL3/tree/develop#asl-configuration)
