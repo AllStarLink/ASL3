@@ -13,7 +13,7 @@ However make the following selections with the imager:
 
 If you are using a Pi 4 platform you must use the 64-bit distribution to get a reasonable set of kernel headers to build the software. Raspian 11 is currently in a weird limbo land where the kernel will be 64-bit and userspace is 32-bit. That works fine in most cases but not for building and installing software that ties into the Linux kernel.
 
-* For **Choose OS** select **Raspberry Pi OS (other) ** --> **Raspberry Pi OS Lite (32-bit)**
+* For **Choose OS** select **Raspberry Pi OS (other) ** --> **Raspberry Pi OS Lite (32-bit)**. It should look like [this](https://github.com/AllStarLink/ASL3/blob/develop/RPiDebianDownload.png).
 
 Note that the lite image does not have any desktop - the expectation is you're accessing
 the system over SSH. You can use the desktop version if necessary for convenience.
