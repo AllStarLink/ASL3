@@ -4,9 +4,9 @@
 
 AllStarLink’s app_rpt version 3 (ASL3) is the next generation of repeater control software.  This version of app_rpt has been redesigned to run on the latest operating systems and the current version of asterisk® 20.1.0.
 
-The update from asterisk version 1.4 to 20.1.0 implements over 15 years of bug fixes, security improvements and enhancements to the core asterisk application.  This update required app_rpt to be heavily modified to run on the latest version of asterisk®.  It brings with it the latest asterisk® applications, channels and extensions.
+The update from Asterisk version 1.4 to 20 implements over 15 years of bug fixes, security improvements and enhancements to the core asterisk application.  This update required app_rpt to be heavily modified to run on the latest version of asterisk®.  It brings with it the latest Asterisk® applications, channel drivers and other functionality.
 
-As part of this update, app_rpt has been refactored to make the code base easier to maintain and enhance.  This process has been going on for over one year and will continue.  The app_rpt code base will meet all current asterisk® coding guidelines.
+As part of this update, app_rpt has been refactored to make the code base easier to maintain and enhance.  This process has been going on for over one year and will continue.  The app_rpt code base will meet all current Asterisk® coding guidelines.
 
 **New Features and improvements** 
 - DNS IP address resolution
@@ -23,7 +23,7 @@ In order to test this version, you must be accepted as an alpha tester.  During 
 
 Configuration files from previous versions of ASL app_rpt are not compatible with the ASL3.  Some of the “conf” files may appear the same, while others will look completely different.
 
-Much of these instructions are from Naveen's repo with added detail for newbees.
+Much of these instructions are from [Naveen's repo](https://github.com/InterLinked1/app_rpt) with added detail for newbies.
 
 ### Download OS
 Alpha testers are encouraged to use the latest version of Debian for testing.
@@ -31,15 +31,15 @@ Alpha testers are encouraged to use the latest version of Debian for testing.
 ### For Raspberry Pi
 OS install instructions are at [Pi-instll.md](https://github.com/AllStarLink/ASL3/blob/develop/RPi-install.md) then come back by following the link at the end of the Pi-install.
 
-### Install phreaknet script
+### Install PhreakScript
 ```
 cd /usr/src && wget https://docs.phreaknet.org/script/phreaknet.sh && chmod +x phreaknet.sh && ./phreaknet.sh make
 ```
 ### Install Asterisk
-Use the phreaknet script to install Asterisk. Use either -t or -b for developer mode. 
-- The -t is for backtraces and thread debug. Alternatively use -b for backtraces only, recommended on 386.
-- The -s is for sip. PJSIP is recommended as SIP was depreciated 5 years ago. PJSIP setup instructions are in this repo.   
-- The -d is for DAHDI and is required
+Use PhreakScript to install Asterisk. Use either `-t` or `-b` for developer mode. 
+- The `-t` is for backtraces and thread debug. Alternatively use `-b` for backtraces only, recommended on 386.
+- The `-s` is for sip. PJSIP is recommended as SIP was deprecated 5 years ago and will not appear in any future Asterisk release. PJSIP setup instructions are in this repo.   
+- The `-d` is for DAHDI and is required
 ```
 phreaknet install -b -d
 ```
@@ -71,7 +71,7 @@ cd app_rpt
 ```
 
 ### Install ASL3 configs
-This adds ASL3 configs to a full set of Asterisk configuration files. However, modules.conf limits what actually runs to a miminal ASL configuration. 
+This adds ASL3 configs to a full set of Asterisk configuration files. However, `modules.conf` limits what actually runs to a miminal ASL configuration. 
 ```
 cp /usr/src/app_rpt/configs/rpt/* /etc/asterisk
 ```
@@ -89,9 +89,9 @@ You should see node 1999. If so, you are now ready to configure your node.
 The alpha does not include Allmon, Supermon or the asl-menu. All configuration must be done with the editor of your choice.
 
 ### HTTP Registration
-AllStarLink registration is moving from IAX to HTTP registration.  IAX registration will remain in chan_iax as part of Asterisk but may be removed from the AllStarLink servers at some far-off day. The module res_rpt_http_registrations handles http registrations, chan_iax still handels IAX registration. Please use and test either but do not configure both at the same time.
+AllStarLink registration is moving from IAX2 to HTTP registration.  IAX2 registration will remain in `chan_iax2` as part of Asterisk but may be removed from the AllStarLink servers at some far-off day. The module `res_rpt_http_registrations` handles HTTP registrations, `chan_iax2` still handles IAX2 registration. Please use and test either but do not configure both at the same time.
 
-HTTP registration is configured by editing /etc/asterisk/rpt_http_registrations.conf.
+HTTP registration is configured by editing `/etc/asterisk/rpt_http_registrations.conf`.
 
 ```
 [General]
