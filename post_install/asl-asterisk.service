@@ -1,4 +1,4 @@
-#/etc/systemd/system/asl-asterisk.service
+#/lib/systemd/system/asl-asterisk.service
 [Unit]
 Description=AllStar Asterisk
 Documentation=man:asterisk(8)
