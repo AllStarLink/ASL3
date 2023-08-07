@@ -85,12 +85,11 @@ Save the file.
 Edit /etc/asterisk/rpt.conf.  Add the following line to the bottom of the node that you want to broadcast.
 
 ```
-outstreamcmd = /bin/sh,-c,/usr/local/bin/lame --preset cbr 16 -r -m m -s 8 --bitwidth 16 - - | /usr/bin/ezstream -qvc /etc/ezstream.xml 2>/tmp/ezstreamlog.txt
+outstreamcmd = /bin/sh,-c,/usr/bin/lame --preset cbr 16 -r -m m -s 8 --bitwidth 16 - - | /usr/local/bin/ezstream -qvc /etc/ezstream.xml 2>/tmp/ezstreamlog.txt
 ```
 
 The above parameters have these meanings.
-
-	Meaning of outstream paramaters:
+	
 	-- preset cbr 16 = use constant bit rate 16
 	-r = Assume the input file is raw pcm
 	-m m = Mode mono
@@ -114,5 +113,5 @@ If you have an existing feed, you will need to upgrade your existing xml file to
 cd /etc
 ezstream-cfgmigrate -0 ezstream.xml > ezstream.xml.new
 cp ezstream.xml ~/
-cp ezstream.new ezstream.xml
+mv ezstream.new ezstream.xml
 ```
