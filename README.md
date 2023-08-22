@@ -194,6 +194,9 @@ node_lookup_method = both	;method used to lookup nodes
 ```
 The node lookup routines will output debug information showing the node lookups if the debug level is set to 4 or higher.
 
+## rpt showvars
+The `rpt showvars <nodenum>` has changed to `rpt show variables <nodenum>`.
+
 ## Echolink Show Nodes
 `echolink show nodes`  is used to view the currently connected echolink users.
 
