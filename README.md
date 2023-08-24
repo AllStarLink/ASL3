@@ -26,7 +26,7 @@ Configuration files from previous versions of ASL app_rpt are not compatible wit
 Much of these instructions are from [Naveen's repo](https://github.com/InterLinked1/app_rpt) with added detail for newbies.
 
 ### Download OS
-Alpha testers are encouraged to use the latest version of Debian for testing.
+Alpha testers are encouraged to use the latest version of Debian for testing. Download the netinstall iso. Don't install a desktop or any servers other than ssh.
 
 ### For Raspberry Pi
 OS install instructions are at [Pi-instll.md](https://github.com/AllStarLink/ASL3/blob/develop/RPi-install.md) then come back by following the link at the end of the Pi-install.
