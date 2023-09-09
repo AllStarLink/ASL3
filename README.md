@@ -119,16 +119,6 @@ HTTP registration is configured by editing `/etc/asterisk/rpt_http_registrations
 register => 1999:password@register.allstarlink.org    ; This must be changed to your node number, password
 ```
 
-### Configuration Files Changes
-In rpt.conf the following settings now take yes/no rather than 1/0.
-
-- echolinkdynamic
-- telemdynamic
-- lnkactenable
-- nounkeyct 
-- holdofftelem
-- beaconing
-
 ### Asterisk Templates Explained
 
 The app_rpt configuration file now optionally makes use of asterisk templates.  This is a new concept for app_rpt users.  
