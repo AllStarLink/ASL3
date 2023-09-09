@@ -83,9 +83,27 @@ You should now have a complete ASL3 alpha install.
 ```
 asterisk -rx "rpt localnodes"
 ```
-You should see node 1999. If so, you are now ready to configure your node. 
+You should see node 1999. If so,  
 
-## ASL Configuration
+### Install Node Updater
+Because ASL3 alpha includes DNS IP address resolution the node updater is not needed. However, for testing installing the node updater is recommended.
+
+```
+apt install curl gpg
+cd /tmp
+wget http://apt.allstarlink.org/repos/asl_builds/install-allstarlink-repository
+chmod +x install-allstarlink-repository
+./install-allstarlink-repository
+apt -y install asl-update-node-list
+
+```
+
+### Install Systemd
+See the post install [README.md](https://github.com/AllStarLink/ASL3/tree/develop/post_install#systemd-files).
+
+You are now ready to configure your node.
+
+# ASL Configuration
 The alpha does not include Allmon, Supermon or the asl-menu. All configuration must be done with the editor of your choice.
 
 ### HTTP Registration
@@ -101,23 +119,17 @@ HTTP registration is configured by editing `/etc/asterisk/rpt_http_registrations
 register => 1999:password@register.allstarlink.org    ; This must be changed to your node number, password
 ```
 
+### Configuration Files Changes
+In rpt.conf the following settings now take yes/no rather than 1/0.
 
-### Node Updater
-Because ASL3 alpha includes DNS IP address resolution the node updater is not needed. However, for testing installing the node updater is recommended.
+- echolinkdynamic
+- telemdynamic
+- lnkactenable
+- nounkeyct 
+- holdofftelem
+- beaconing
 
-```
-apt install curl gpg
-cd /tmp
-wget http://apt.allstarlink.org/repos/asl_builds/install-allstarlink-repository
-chmod +x install-allstarlink-repository
-./install-allstarlink-repository
-apt -y install asl-update-node-list
-
-```
-### Systemd Install
-See the post install [README.md](https://github.com/AllStarLink/ASL3/tree/develop/post_install#systemd-files).
-
-# Asterisk Templates Explained
+### Asterisk Templates Explained
 
 The app_rpt configuration file now optionally makes use of asterisk templates.  This is a new concept for app_rpt users.  
 
