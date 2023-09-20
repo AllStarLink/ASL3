@@ -218,5 +218,10 @@ Example:
 **core set debug 5 app_rpt.so**  
 **core set debug 3 chan_echolink.so**
 
+# Operational Changes
+
+## EEPROM Operation
+chan_simpleusb and chan_usbradio allows users to store configuration information in the EEPROM attached to their CM-xxx device(s).  The CM119A can have manufacturer information in the same area that stores the user configuration.  The CM119B does have manufacturer data in the area that stores user configuration.  The manufacturer data cannot be overwriten.  The user configuration data has been moved higher in memory to prevent overwriting the manufacturer data.  If you use the EEPROM to store configuration data, you will need to save it to the EEPROM after upgrading.  Use `susb tune save` or `radio tune save`.
+
 
 This document was created by Danny Lloyd/KB4MDD and modified to death by WD6AWP
