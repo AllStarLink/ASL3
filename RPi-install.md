@@ -83,7 +83,7 @@ chmod +x phreaknet.sh && \
 * Build and install Asterisk 20 and the DAHDI kernel module:
 ```
 phreaknet dahdi
-phreaknet install -b -s
+phreaknet install -b -s -t 20.5.0
 ```
 Note: This will take a long time. 
 
