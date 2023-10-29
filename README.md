@@ -40,8 +40,9 @@ Use PhreakScript to install Asterisk. Use either `-t` or `-b` for developer mode
 - The `-t` is for backtraces and thread debug. Alternatively use `-b` for backtraces only, recommended on 386.
 - The `-s` is for sip. PJSIP is recommended as SIP was deprecated 5 years ago and will not appear in any future Asterisk release. PJSIP setup instructions are in this repo.   
 - The `-d` is for DAHDI and is required
+- The `-v` is for the Asterisk version. This additional instruction is to prevent the install of Asterisk 21.x which is [not LTS](https://docs.asterisk.org/About-the-Project/Asterisk-Versions/) and thus not AllStarLink supported. 
 ```
-phreaknet install -b -d
+phreaknet install -b -d -v 20.5.0
 ```
 You'll need to reboot at this point.
 
