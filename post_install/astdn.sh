@@ -10,12 +10,12 @@
 #                                               #
 #################################################
 
-systemctl is-active --quiet asl-asterisk.service
+systemctl is-active --quiet asterisk.service
 err=$?
 if [ $err -eq 0 ]; then
 	echo "Stopping Asterisk..."
-    echo "systemctl stop asl-asterisk.service"
-	systemctl stop asl-asterisk.service
+    echo "systemctl stop asterisk.service"
+	systemctl stop asterisk.service
 
 else
 	echo "Asterisk is not running!"
