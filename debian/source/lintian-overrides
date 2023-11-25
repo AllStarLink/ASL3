@@ -1,0 +1,11 @@
+# These are part of the source and I'm not sure
+# why it's alerting
+allmon3 source: source-is-missing [web/index.html]
+allmon3 source: source-is-missing [web/voter.html]
+
+# Overkill to disribute the entire bootstrap download
+# in the repository
+allmon3 source: source-is-missing [web/js/bootstrap.bundle.min.js]
+
+# Upstream is debian
+allmon3 source: no-debian-changes
