@@ -2,116 +2,77 @@
 
 ## ASL3 Alpha Release Notes
 
-AllStarLink’s app_rpt version 3 (ASL3) is the next generation of repeater control software.  This version of app_rpt has been redesigned to run on the latest operating systems and the current version of Asterisk® 20.x.x.
+AllStarLink’s app\_rpt version 3 (ASL3) is the next generation of repeater control software.  This version of app\_rpt has been redesigned to run on the latest operating systems and the current LTS version of Asterisk® 20.
 
-The update from Asterisk version 1.4 to 20 implements over 15 years of bug fixes, security improvements and enhancements to the core asterisk application.  This update required app_rpt to be heavily modified to run on the latest version of asterisk®.  It brings with it the latest Asterisk® applications, channel drivers and other functionality.
+The update from Asterisk version 1.4 to 20 implements over 15 years of bug fixes, security improvements and enhancements to the core asterisk application.  This update required app\_rpt to be heavily modified to run on the latest version of asterisk®.  It brings with it the latest Asterisk® applications, channel drivers and other functionality.
 
-As part of this update, app_rpt has been refactored to make the code base easier to maintain and enhance.  This process has been going on for over one year and will continue.  The app_rpt code base will meet all current Asterisk® coding guidelines.
+As part of this update, app\_rpt has been refactored to make the code base easier to maintain and enhance.  This process has been going on for over one year and will continue.  The app\_rpt code base will meet all current Asterisk® coding guidelines.
 
 **New Features and improvements** 
 - DNS IP address resolution
 - HTTP AllStarLink registration
 - EchoLink and other module memory leaks addressed
 - EchoLink chat has been enabled
-- EchoLink now honors the app_rpt timeout timer.  A text message is sent to the client when they time out.
+- EchoLink now honors the app\_rpt timeout timer.  A text message is sent to the client when they time out.
 - EchoLink will no longer allow clients to double.  A text message is sent to the client when they are doubling.
 - All modules reload or refresh 
 - Compile directives for more archicetures
 
-## Install
-In order to test this version, you must be accepted as an alpha tester.  During the alpha testing phase the repository is private.  Contact Naveen on Slack for access to the private repo. You need a username on Github and a personal access token.  See creating an access token on github. 
+## Installation
 
-Configuration files from previous versions of ASL app_rpt are not compatible with the ASL3.  Some of the “conf” files may appear the same, while others will look completely different.
+### Operating System
+ASL3 is targeting Debian 12 and testing should be done in a fresh(ish) installation of Debian 12. Currently supported platforms are x86\_64 and arm64/aarch64. For Raspberry Pi platforms, install the 64-bit version of Raspberry Pi OS 12 (Raspbian 12) on a Pi3 or Pi4 system. There are currently no builds for the 32-bit legacy version of RPi OS (armhf).
 
-Much of these instructions are from [Naveen's repo](https://github.com/InterLinked1/app_rpt) with added detail for newbies.
+### asl3-asterisk installation
+At the moment, since the release is not public, the ASL3 system must be downloaded from GitHub rather than `apt install`. The beta and production relases of ASL3 will be installed from a normal Apt repository. Download the latest tarball from https://github.com/AllStarLink/asl3-asterisk/releases/latest and save it to `/root`. Note that the tarballs are architecture-specific so retrieve the "amd64" version for x86\_64 and the arm64 for Pi/Arm/aarch64 platforms.
 
-### Download OS
-Alpha testers are encouraged to use the latest version of Debian for testing. Download the netinstall iso. Don't install a desktop or any servers other than ssh.
-
-### For Raspberry Pi
-OS install instructions are at [Pi-instll.md](https://github.com/AllStarLink/ASL3/blob/develop/RPi-install.md) then come back by following the link at the end of the Pi-install.
-
-### Install PhreakScript
+Expand the installation using `tar xvfz`. As an example:
 ```
-cd /usr/src && wget https://docs.phreaknet.org/script/phreaknet.sh && chmod +x phreaknet.sh && ./phreaknet.sh make
-```
-### Install Asterisk
-Use PhreakScript to install Asterisk. Use either `-t` or `-b` for developer mode. 
-- The `-t` is for backtraces and thread debug. Please note that -t will cause performance issues with app_rpt and is not recommended unless actively doing heavy thread debugging, and performance issues should not be opened against versions compiled with this option. Alternatively use `-b` for backtraces only, recommended on 386.
-- The `-s` is for sip. PJSIP is recommended as SIP was deprecated 5 years ago and will not appear in any future Asterisk release. PJSIP setup instructions are in this repo.   
-- The `-d` is for DAHDI and is required
-- The `-v` is for the Asterisk version. This additional instruction is to prevent the install of Asterisk 21.x which is [not LTS](https://docs.asterisk.org/About-the-Project/Asterisk-Versions/) and thus not AllStarLink supported. Use `phreaknet install --version=20`, for example, to always get the latest 20 version (asterisk-20-current), and then the sub-version (ie 20.5.0) doesn't need to be provided. 
-```
-phreaknet install -b -d -v 20
-```
-You'll need to reboot at this point.
-
-Asterisk should be running at this point but not app_rpt. Now would be a good idea to check with `asterisk -r`. If so, congrats. Time to move on to the fun stuff.
-
-### Clone ASL3 Source
-As you follow the installation procedures, you will be prompted for a username and password.  Your username will be your github username.  Use your access token for the password.  
-
-```
-cd /usr/src
-git clone https://github.com/InterLinked1/app_rpt.git
-
+tar xvfz asl3-asterisk-20.5.0+asl3-0.0.10.fadead4.deb12-1-amd64.tar.gz 
 ```
 
-This will save your git credentials in your home directory next time you use them. Be sure global is preceded with two dashes rather than one long dash. 
-
+This will result in 5 packages starting with asl3-asterisk and 3 starting with dahdi. Install Dahdi first:
 ```
-git config --global user.name
-git config --global user.email
-git config --global credential.helper store
-```
-
-### Install ASL3
-```
-cd app_rpt
-./rpt_install.sh
+apt install dkms linux-headers-`uname -r`
+dpkg -i dahdi-dkms_3.2.0+asl-8_all.deb dahdi-linux_3.2.0+asl-8_all.deb dahdi-source_3.2.0+asl-8_all.deb
+modprobe dahdi
 ```
 
-### Install ASL3 configs
-This adds ASL3 configs to a full set of Asterisk configuration files. However, `modules.conf` limits what actually runs to a miminal ASL configuration. 
+Now install the asl3-asterisk packages. The `dpkg` command will issue errors about missing dependencies. This is okay and fixed with the `apt install -f` command. For example:
 ```
-cp /usr/src/app_rpt/configs/rpt/* /etc/asterisk
+dpkg -i asl3-asterisk*.deb
+apt install -f
 ```
-
-> reboot the system
 
 You should now have a complete ASL3 alpha install.
-
 ```
 asterisk -rx "rpt localnodes"
 ```
-You should see node 1999. If so,  
+You should see node 1999.
 
-### Install Node Updater
-Because ASL3 alpha includes DNS IP address resolution the node updater is not needed. However, for testing installing the node updater is recommended.
-
+## ASL3 Configuration
+The alpha does not include asl-menu. All configuration must be done with the editor of your choice.
+Inspect the directions listed in `/etc/asterisk/rpt.conf` closely as the configuration files
+have greatly changed and there are very few things that need to be edited for standard
+installs. You can minimally create a functional networked node with the following using node
+number 71234 as **an example** node number:
 ```
-apt install curl gpg
-cd /tmp
-wget http://apt.allstarlink.org/repos/asl_builds/install-allstarlink-repository
-chmod +x install-allstarlink-repository
-./install-allstarlink-repository
-apt -y install asl-update-node-list
-
+cd /etc/asterisk
+perl -pi -e 's/1999/71234/g' *
+mv simpleusb_tune_usb_1999.conf simpleusb_tune_usb_71234.conf
+mv usbradio_tune_usb_1999.conf usbradio_tune_usb_71234.conf
 ```
 
-### Install Systemd
-See the post install [README.md](https://github.com/AllStarLink/ASL3/tree/develop/post_install#systemd-files).
-
-You are now ready to configure your node.
-
-# ASL Configuration
-The alpha does not include Allmon, Supermon or the asl-menu. All configuration must be done with the editor of your choice.
+Note that all files in `/etc/asterisk` must be owned and writable by the asterisk user. This
+is an important, major change in ASL3. To fix them:
+```
+chown -R asterisk:asterisk /etc/asterisk
+```
 
 ### HTTP Registration
 AllStarLink registration is moving from IAX2 to HTTP registration.  IAX2 registration will remain in `chan_iax2` as part of Asterisk but may be removed from the AllStarLink servers at some far-off day. The module `res_rpt_http_registrations` handles HTTP registrations, `chan_iax2` still handles IAX2 registration. Please use and test either but do not configure both at the same time.
 
 HTTP registration is configured by editing `/etc/asterisk/rpt_http_registrations.conf`.
-
 ```
 [General]
 
@@ -120,7 +81,7 @@ HTTP registration is configured by editing `/etc/asterisk/rpt_http_registrations
 register => 1999:password@register.allstarlink.org    ; This must be changed to your node number, password
 ```
 
-### Asterisk Templates Explained
+## Asterisk Templates Explained
 
 The app_rpt configuration file now optionally makes use of asterisk templates.  This is a new concept for app_rpt users.  
 
@@ -156,7 +117,7 @@ rxchannel = Radio/usb_1999       ; USBRadio (DSP)
 
 Entries that are added below `[1999](node-main)` override or add to the default settings.  You will notice that `rxchannel = Radio/usb_1999` was added here to override the default found in the template.  The same goes for startup_macro. If uncommented, it overrides the default in the template.
 
-## Rpt.conf Edits
+### Rpt.conf Edits
 The rpt.conf file is documented with comments to help you make changes.  Please review the comments in the file as you make edits to setup your node.
 
 After you have completed these changes, enter the command:
@@ -175,12 +136,12 @@ Since asl-menu is not available in the Alpha release, you will have to use one o
 Or
 `/usr/lib/asterisk/simpleusb-tune-menu`
 
-# New or updated app_rpt commands
+## New or updated app_rpt commands
 
-## HTTP Registrations
+### HTTP Registrations
 `rpt show registrations`  is used to view your registration to the AllStarLink servers.
 
-## DNS Lookup
+### DNS Lookup
 Asterisk CLI comand `rpt lookup 2000` for example will show the IP address of node 2000.
 Linux CLI is `nslookup 2000.nodes.allstarlink.org`, for example. 
 
@@ -197,19 +158,19 @@ node_lookup_method = both	;method used to lookup nodes
 ```
 The node lookup routines will output debug information showing the node lookups if the debug level is set to 4 or higher.
 
-## rpt showvars
+### rpt showvars
 The `rpt showvars <nodenum>` has changed to `rpt show variables <nodenum>`.
 
-## Echolink Show Nodes
+### Echolink Show Nodes
 `echolink show nodes`  is used to view the currently connected echolink users.
 
-## Echolink Show Stats
+### Echolink Show Stats
 `echolink show stats`  is used to view the channel statistics for echolink.  
 It shows the number of in-bound and out-bound connections.  It also shows the cumulative system statistics, along with the statistics for each connected nodes.
 
 ## Debugging
 
-Previously app_rpt and associated channels supported setting the debug level with an associated app / channel command.  These app / channel commands have been removed and replaced with the asterisk command: 
+Previously app\_rpt and associated channels supported setting the debug level with an associated app / channel command.  These app / channel commands have been removed and replaced with the asterisk command: 
 
 **core set debug x module**
 
@@ -219,10 +180,7 @@ Example:
 **core set debug 5 app_rpt.so**  
 **core set debug 3 chan_echolink.so**
 
-# Operational Changes
-
 ## EEPROM Operation
-chan_simpleusb and chan_usbradio allows users to store configuration information in the EEPROM attached to their CM-xxx device(s).  The CM119A can have manufacturer information in the same area that stores the user configuration.  The CM119B does have manufacturer data in the area that stores user configuration.  The manufacturer data cannot be overwriten.  The user configuration data has been moved higher in memory to prevent overwriting the manufacturer data.  If you use the EEPROM to store configuration data, you will need to save it to the EEPROM after upgrading.  Use `susb tune save` or `radio tune save`.
+chan\_simpleusb and chan\_usbradio allows users to store configuration information in the EEPROM attached to their CM-xxx device(s).  The CM119A can have manufacturer information in the same area that stores the user configuration.  The CM119B does have manufacturer data in the area that stores user configuration.  The manufacturer data cannot be overwriten.  The user configuration data has been moved higher in memory to prevent overwriting the manufacturer data.  If you use the EEPROM to store configuration data, you will need to save it to the EEPROM after upgrading.  Use `susb tune save` or `radio tune save`.
 
-
-This document was created by Danny Lloyd/KB4MDD and modified to death by WD6AWP
+This document was created by Danny Lloyd/KB4MDD and modified to death by WD6AWP and further hacked up by N8EI.
