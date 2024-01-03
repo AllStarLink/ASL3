@@ -9,7 +9,7 @@ The update from Asterisk version 1.4 to 20 implements over 15 years of bug fixes
 As part of this update, app\_rpt has been refactored to make the code base easier to maintain and enhance.  This process has been going on for over one year and will continue.  The app\_rpt code base will meet all current Asterisk® coding guidelines.
 
 **New Features and improvements** 
-- DNS IP address resolution
+- DNS IP address resolution with fallback to file
 - HTTP AllStarLink registration
 - EchoLink and other module memory leaks addressed
 - EchoLink chat has been enabled
