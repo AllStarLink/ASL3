@@ -168,6 +168,14 @@ The `rpt showvars <nodenum>` has changed to `rpt show variables <nodenum>`.
 `echolink show stats`  is used to view the channel statistics for echolink.  
 It shows the number of in-bound and out-bound connections.  It also shows the cumulative system statistics, along with the statistics for each connected nodes.
 
+### chan_simpleusb Show Settings
+`susb show settings`  is used to show the currently selected node's settings.
+This replaces `susb tune`.
+
+### chan_usbradio Show Settings
+`radio show settings`  is used to show the currently selected node's settings.
+This replaces `radio tune`.
+
 ## Debugging
 
 Previously app\_rpt and associated channels supported setting the debug level with an associated app / channel command.  These app / channel commands have been removed and replaced with the asterisk command: 
