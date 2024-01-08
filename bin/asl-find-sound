@@ -5,7 +5,7 @@ USBROOT=/sys/bus/usb/devices
 ls $USBROOT | while read DEV 
 do
 	USBDEV="$USBROOT/$DEV"
-	if [ -f $USBDEV/manufacturer ] && `grep -q "USB PnP Sound Device" $USBDEV/product`; then
+	if [ -f $USBDEV/manufacturer ] && `grep -q -E "USB.*(ound|udio)" $USBDEV/product`; then
 			cd $USBROOT
 			MANF=`cat $USBDEV/manufacturer`
 			IDPROD=`cat $USBDEV/idProduct`
