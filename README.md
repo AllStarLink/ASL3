@@ -28,7 +28,7 @@ At the moment, since the release is not public, the ASL3 system must be download
 
 Expand the installation using `tar xvfz`. As an example:
 ```
-tar xvfz asl3-asterisk-20.5.0+asl3-0.0.10.fadead4.deb12-1-amd64.tar.gz 
+tar xvfz asl3-asterisk_20.5.2+asl3-0.1.1.d4b6a01-1.deb12_amd64.tar.gz
 ```
 
 This will result in 5 packages starting with asl3-asterisk and 3 starting with dahdi. Install Dahdi first:
