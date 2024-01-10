@@ -35,6 +35,7 @@ This will result in 5 packages starting with asl3-asterisk and 3 starting with d
 ```
 apt install dkms linux-headers-`uname -r`
 dpkg -i dahdi-dkms_3.2.0+asl-8_all.deb dahdi-linux_3.2.0+asl-8_all.deb dahdi-source_3.2.0+asl-8_all.deb
+apt install -f
 modprobe dahdi
 ```
 
