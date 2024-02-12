@@ -1,22 +1,23 @@
-# AllStarLink Version 3 
+# AllStarLink Version 3
 
 ## ASL3 Alpha Release Notes
 
-AllStarLink’s app\_rpt version 3 (ASL3) is the next generation of repeater control software.  This version of app\_rpt has been redesigned to run on the latest operating systems and the current LTS version of Asterisk® 20.
+AllStarLink’s app\_rpt version 3 (ASL3) is the next generation of repeater and hotspot software.  This version of app\_rpt has been redesigned to run on the latest operating systems and the current LTS version of Asterisk® 20.
 
 The update from Asterisk version 1.4 to 20 implements over 15 years of bug fixes, security improvements and enhancements to the core asterisk application.  This update required app\_rpt to be heavily modified to run on the latest version of asterisk®.  It brings with it the latest Asterisk® applications, channel drivers and other functionality.
 
 As part of this update, app\_rpt has been refactored to make the code base easier to maintain and enhance.  This process has been going on for over one year and will continue.  The app\_rpt code base will meet all current Asterisk® coding guidelines.
 
-**New Features and improvements** 
+**New Features and improvements**
 - DNS IP address resolution with fallback to file
 - HTTP AllStarLink registration
 - EchoLink and other module memory leaks addressed
 - EchoLink chat has been enabled
 - EchoLink now honors the app\_rpt timeout timer.  A text message is sent to the client when they time out.
 - EchoLink will no longer allow clients to double.  A text message is sent to the client when they are doubling.
-- All modules reload or refresh 
+- All modules reload or refresh
 - Compile directives for more archicetures
+- Improved uptime
 
 ## Installation
 
@@ -83,7 +84,7 @@ register => 1999:password@register.allstarlink.org    ; This must be changed to 
 
 ## Asterisk Templates Explained
 
-The app_rpt configuration file now optionally makes use of asterisk templates.  This is a new concept for app_rpt users.  
+The app_rpt configuration file now optionally makes use of asterisk templates.  This is a new concept for app_rpt users.
 
 You will see the following in rpt.conf:
 
@@ -143,7 +144,7 @@ Or
 
 ### DNS Lookup
 Asterisk CLI comand `rpt lookup 2000` for example will show the IP address of node 2000.
-Linux CLI is `nslookup 2000.nodes.allstarlink.org`, for example. 
+Linux CLI is `nslookup 2000.nodes.allstarlink.org`, for example.
 
 The software now implements DNS lookup of node information.  By default the software will now query the AllStarLink DNS servers first to resolve node information.  It will fall back to the external rpt_extnodes file if the node cannot be resolved by DNS.
 
@@ -165,7 +166,7 @@ The `rpt showvars <nodenum>` has changed to `rpt show variables <nodenum>`.
 `echolink show nodes`  is used to view the currently connected echolink users.
 
 ### Echolink Show Stats
-`echolink show stats`  is used to view the channel statistics for echolink.  
+`echolink show stats`  is used to view the channel statistics for echolink.
 It shows the number of in-bound and out-bound connections.  It also shows the cumulative system statistics, along with the statistics for each connected nodes.
 
 ### chan_simpleusb Show Settings
@@ -178,14 +179,14 @@ This replaces `radio tune`.
 
 ## Debugging
 
-Previously app\_rpt and associated channels supported setting the debug level with an associated app / channel command.  These app / channel commands have been removed and replaced with the asterisk command: 
+Previously app\_rpt and associated channels supported setting the debug level with an associated app / channel command.  These app / channel commands have been removed and replaced with the asterisk command:
 
 **core set debug x module**
 
 Where x is the debug level and module is the name of the app or module.
 
-Example:  
-**core set debug 5 app_rpt.so**  
+Example:
+**core set debug 5 app_rpt.so**
 **core set debug 3 chan_echolink.so**
 
 ## EEPROM Operation
