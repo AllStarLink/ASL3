@@ -25,7 +25,7 @@ ASL3 is targeting Debian 12 and testing should be done in a fresh(ish) installat
 ### asl3-asterisk installation
 Currently, the ASL3 system must be downloaded from GitHub rather than `apt install`. Future relases of ASL3 will be installed from a normal Apt repository. Download the latest tarball from https://github.com/AllStarLink/asl3-asterisk/releases/latest and save it to `/root`. Note that the tarballs are architecture-specific so retrieve the "amd64" version for x86\_64 and the arm64 for Pi/Arm/aarch64 platforms.
 
-This part will need updates for Allan's "jump start" script.
+***This part will need updates for Allan's "jump start" script.***
 
 Expand the installation using `tar xvfz`. As an example:
 ```
@@ -52,7 +52,7 @@ asterisk -rx "rpt localnodes"
 You should see node 1999.
 
 ## ASL3 Configuration
-This part will need to be updated for Allan's ASL3-menu.
+***This part will need to be updated for Allan's ASL3-menu.***
 
 The alpha does not include asl-menu. All configuration must be done with the editor of your choice.
 Inspect the directions listed in `/etc/asterisk/rpt.conf` closely as the configuration files
