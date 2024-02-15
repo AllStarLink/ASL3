@@ -1,6 +1,6 @@
 # AllStarLink Version 3
 
-AllStarLink’s app\_rpt version 3 (ASL3) is the next generation of repeater and hotspot software.  This version of app\_rpt has been redesigned to run on the latest operating systems and the current LTS version of Asterisk® 20.
+AllStarLink’s app\_rpt version 3 (ASL3) is the next generation of repeater and hotspot software.  This version of app\_rpt has been redesigned to run on the latest operating systems and the current LTS version of Asterisk® 20. ASL3 runs on Raspberry Pi 3, 4, and 5 as well as amd64 and x86.
 
 The update from Asterisk version 1.4 to 20 implements over 15 years of bug fixes, security improvements and enhancements to the core asterisk application.  This update required app\_rpt to be heavily modified to run on the latest version of Asterisk®.  It brings with it the latest Asterisk® applications, channel drivers and other functionality.
 
@@ -23,7 +23,9 @@ As part of this update, app\_rpt has been refactored to make the code base easie
 ASL3 is targeting Debian 12 and testing should be done in a fresh(ish) installation of Debian 12. Currently supported platforms are x86\_64 and arm64/aarch64. For Raspberry Pi platforms, install the 64-bit version of Raspberry Pi OS 12 (Raspbian 12) on a Pi3 or Pi4 system. There are currently no builds for the 32-bit legacy version of RPi OS (armhf).
 
 ### asl3-asterisk installation
-At the moment, since the release is not public, the ASL3 system must be downloaded from GitHub rather than `apt install`. The beta and production relases of ASL3 will be installed from a normal Apt repository. Download the latest tarball from https://github.com/AllStarLink/asl3-asterisk/releases/latest and save it to `/root`. Note that the tarballs are architecture-specific so retrieve the "amd64" version for x86\_64 and the arm64 for Pi/Arm/aarch64 platforms.
+Currently, the ASL3 system must be downloaded from GitHub rather than `apt install`. Future relases of ASL3 will be installed from a normal Apt repository. Download the latest tarball from https://github.com/AllStarLink/asl3-asterisk/releases/latest and save it to `/root`. Note that the tarballs are architecture-specific so retrieve the "amd64" version for x86\_64 and the arm64 for Pi/Arm/aarch64 platforms.
+
+This part will need updates for Allan's "jump start" script.
 
 Expand the installation using `tar xvfz`. As an example:
 ```
@@ -50,6 +52,8 @@ asterisk -rx "rpt localnodes"
 You should see node 1999.
 
 ## ASL3 Configuration
+This part will need to be updated for Allan's ASL3-menu.
+
 The alpha does not include asl-menu. All configuration must be done with the editor of your choice.
 Inspect the directions listed in `/etc/asterisk/rpt.conf` closely as the configuration files
 have greatly changed and there are very few things that need to be edited for standard
