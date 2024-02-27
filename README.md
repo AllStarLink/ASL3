@@ -4,18 +4,23 @@ AllStarLink’s app\_rpt version 3 (ASL3) is the next generation of repeater and
 
 The update from Asterisk version 1.4 to 20 implements over 15 years of bug fixes, security improvements and enhancements to the core asterisk application.  This update required app\_rpt to be heavily modified to run on the latest version of Asterisk®.  It brings with it the latest Asterisk® applications, channel drivers and other functionality.
 
-As part of this update, app\_rpt has been refactored to make the code base easier to maintain and enhance.  This process has been going on for over one year and will continue.  The app\_rpt code base will meet all current Asterisk® coding guidelines.
+As part of this update, app\_rpt has been refactored to make the code base easier to maintain and enhance.  This process has been going on for over a year and will continue.  The app\_rpt code base will meet all current Asterisk® coding guidelines.
 
 **New Features and improvements**
+- New HTTP AllStarLink registration
 - DNS IP address resolution with fallback to file
-- HTTP AllStarLink registration
-- EchoLink and other module memory leaks addressed
-- EchoLink chat has been enabled
-- EchoLink now honors the app\_rpt timeout timer.  A text message is sent to the client when they time out.
-- EchoLink will no longer allow clients to double.  A text message is sent to the client when they are doubling.
+- Memory leaks addressed
 - All modules reload or refresh
-- Compile directives for more archicetures
 - Improved uptime
+- USB tune settings improvements
+- Rpt.conf template
+- Improved ASL menu
+- EchoLink improvements
+   - Chat has been enabled
+   - Honors the app\_rpt timeout timer.  A text message is sent to the client when they time out.
+   - No longer allows clients to double.  A text message is sent to the client when they are doubling.
+- Blacklist and whitelist improvements
+- Compile directives for more archicetures
 
 ## Installation
 
