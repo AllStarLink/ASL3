@@ -22,10 +22,22 @@ As part of this update, app\_rpt has been refactored to make the code base easie
 - Blacklist and whitelist improvements
 - Compile directives for more archicetures
 
+## Updating from ASL2
+There is no update or migration from ASL2. You’re going to be installing a new Debian OS on your computer, VM or microSD card. 
+
+The ASL3 conf files are different. Do not try to use the ASL2 configs. They won't work.
+
+The new ASL3 menu will walk you through setting up a basic USB or hub node quickly. Switching between menu and config edits is non-destructive.  When editing configs or using the Asterisk CLI consider:
+- Registration is now set in `rpt_http_registration.conf` not in `iax.conf`. IAX registration still works but is discouraged. Don't register both http and IAX. The new CLI command is`rpt show registrations`.  
+- A template is now used in `rpt.conf`. Editing is much easier but it's different than ASL2. Node settings are much simpler requiring only a few added lines per node. The ASL3 menu handles the templated config.
+- The USB configuration files now contain the tune settings. There is no tune file for each node as in ASL2. The tune menus and Asterisk CLI write to the new tune setting locations.
+- There is a new blacklist and whitelist.
+- Most of this new stuff is explained with more detail in the ASL3 Configuration section below.
+
 ## Installation
 
 ### Operating System
-ASL3 is targeting Debian 12 and testing should be done in a fresh(ish) installation of Debian 12. Currently supported platforms are x86\_64 and arm64/aarch64. For Raspberry Pi platforms, install the 64-bit version of Raspberry Pi OS 12 (Raspbian 12) on a Pi3 or Pi4 system. There are currently no builds for the 32-bit legacy version of RPi OS (armhf).
+ASL3 is targeting Debian 12 and testing should be installed on a fresh(ish) installation of Debian 12. Currently supported platforms are x86\_64 and arm64/aarch64. For Raspberry Pi platforms, install the 64-bit version of Raspberry Pi OS 12 (Raspbian 12) on a Pi3 or Pi4 system. There are currently no builds for the 32-bit legacy version of RPi OS (armhf).
 
 ### asl3-asterisk installation
 Currently, the ASL3 system must be downloaded from GitHub rather than `apt install`. Future relases of ASL3 will be installed from a normal Apt repository. Download the latest tarball from https://github.com/AllStarLink/asl3-asterisk/releases/latest and save it to `/root`. Note that the tarballs are architecture-specific so retrieve the "amd64" version for x86\_64 and the arm64 for Pi/Arm/aarch64 platforms.
@@ -184,6 +196,28 @@ This replaces `susb tune`.
 `radio show settings`  is used to show the currently selected node's settings.
 This replaces `radio tune`.
 
+### USB EEPROM Operation
+chan\_simpleusb and chan\_usbradio allows users to store configuration information in the EEPROM attached to their Coverwritence(s).  The CM119A can have manufacturer information in the same area that stores the user consusbration.  The CM119B does have manufacturer data in the area that stores user configuration.  The manufacturer data cannot be overwriten.  The user configuration data has been moved higher in memory to prevent overwriting the manufacturer data.  If you use the EEPROM to store configuration data, you will need to save it to the EEPROM after upgrading.  Use `susb tune save` or `radio tune save`.
+
+## Blacklist and Whitelist
+
+ASL3 does not require updates to extensions.conf or iax.conf to implement a blacklist or whitelist. Only database changes are needed to modify the list. Nodes on the same server have different lists. Sample new database commands:
+
+Whitelist node 12345 on 1998
+`database put whitelist/1998 12345 "some value or comment must be here”`
+
+Whitelist node 88888 on 1998
+`database put whitelist/1998 88888 "some value must be here"`
+
+Blacklist node 99999 on node 1998
+`database put blacklist/1998 99999 "if whitelist exists blacklist will be ignored.”`
+
+Show all database commands `database <tab><tab>` ‘ press tab twice’ 
+
+database deltree removes one or more entries. Remove all whitelist entries `database deltree whitelist`
+
+Remove node 1998 whitelist `database deltree whitelist/1998`
+
 ## Debugging
 
 Previously app\_rpt and associated channels supported setting the debug level with an associated app / channel command.  These app / channel commands have been removed and replaced with the asterisk command:
@@ -195,8 +229,5 @@ Where x is the debug level and module is the name of the app or module.
 Example:
 **core set debug 5 app_rpt.so**
 **core set debug 3 chan_echolink.so**
-
-## EEPROM Operation
-chan\_simpleusb and chan\_usbradio allows users to store configuration information in the EEPROM attached to their CM-xxx device(s).  The CM119A can have manufacturer information in the same area that stores the user configuration.  The CM119B does have manufacturer data in the area that stores user configuration.  The manufacturer data cannot be overwriten.  The user configuration data has been moved higher in memory to prevent overwriting the manufacturer data.  If you use the EEPROM to store configuration data, you will need to save it to the EEPROM after upgrading.  Use `susb tune save` or `radio tune save`.
 
 This document was created by Danny Lloyd/KB4MDD and modified to death by WD6AWP and further hacked up by N8EI.
