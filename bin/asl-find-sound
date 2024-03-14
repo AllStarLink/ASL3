@@ -5,18 +5,25 @@ USBROOT=/sys/bus/usb/devices
 ls $USBROOT | while read DEV 
 do
 	USBDEV="$USBROOT/$DEV"
-	if [ -f $USBDEV/manufacturer ] && `grep -q -E "USB.*(ound|udio)" $USBDEV/product`; then
-			cd $USBROOT
-			MANF=`cat $USBDEV/manufacturer`
-			IDPROD=`cat $USBDEV/idProduct`
-			IDVEND=`cat $USBDEV/idVendor`
-			for SUBDEV in `ls -d ${DEV}*`
-			do
-				USBSUBDEV="$USBDEV/$SUBDEV"
-				if [ -d $USBSUBDEV/sound ]; then
-					CHANUSB=$SUBDEV
-				fi
-			done
-			printf "%s\t-->\t%s:%s %s\n" $CHANUSB $IDVEND $IDPROD "$MANF"
+
+	MANF=`cat $USBDEV/manufacturer	2>/dev/null`
+	IDPROD=`cat $USBDEV/idProduct	2>/dev/null`
+	IDVEND=`cat $USBDEV/idVendor	2>/dev/null`
+
+	if [ -n "$MANF" ] && `grep -q -E "USB.*(ound|udio)" $USBDEV/product`; then
+		PROD="$MANF"
+	elif [ "$IDVEND" = "0d8c" -a "$IDPROD" = "000c" ]; then
+		PROD=`cat $USBDEV/product	2>/dev/null`
+	else
+		continue
 	fi
+
+	for SUBDEV in `(cd $USBROOT; ls -d ${DEV}* )`
+	do
+		USBSUBDEV="$USBDEV/$SUBDEV"
+		if [ -d $USBSUBDEV/sound ]; then
+			CHANUSB=$SUBDEV
+			printf "%s\t-->\t%s:%s %s\n" $CHANUSB $IDVEND $IDPROD "$PROD"
+		fi
+	done
 done
