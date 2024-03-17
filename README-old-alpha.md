@@ -19,7 +19,7 @@ As part of this update, app_rpt has been refactored to make the code base easier
 - Compile directives for more archicetures
 
 ## Install
-In order to test this version, you must be accepted as an alpha tester.  During the alpha testing phase the repository is private.  Contact Naveen on Slack for access to the private repo. You need a username on Github and a personal access token.  See creating an access token on github. 
+In order to test this version, you must be accepted as an alpha tester.  During the alpha testing phase the repository is private.  Contact Tim WD6AWP on Slack for access to the private repo. You need a username on Github and a personal access token.  See creating an access token on github. 
 
 Configuration files from previous versions of ASL app_rpt are not compatible with the ASL3.  Some of the “conf” files may appear the same, while others will look completely different.
 
