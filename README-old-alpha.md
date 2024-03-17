@@ -23,8 +23,6 @@ In order to test this version, you must be accepted as an alpha tester.  During 
 
 Configuration files from previous versions of ASL app_rpt are not compatible with the ASL3.  Some of the “conf” files may appear the same, while others will look completely different.
 
-Much of these instructions are from [Naveen's repo](https://github.com/InterLinked1/app_rpt) with added detail for newbies.
-
 ### Download OS
 Alpha testers are encouraged to use the latest version of Debian for testing. Download the netinstall iso. Don't install a desktop or any servers other than ssh.
 
