@@ -21,8 +21,10 @@ As part of this update, app\_rpt has been refactored to make the code base easie
    - No longer allows clients to double.  A text message is sent to the client when they are doubling.
 - Blacklist and whitelist improvements
 - Compile directives for more archicetures
-- Asterisk runs as non-root
-   - See README-port667.md
+- Asterisk runs as non-root **(need to clean up this)**
+   - RTCM configs: See README-port667.md
+   - USB configs: `cat /etc/udev/rules.d.90-asl3.rules` 
+SUBSYSTEM=="usb", ATTRS{idVendor}=="0d8c", GROUP="plugdev", TAG+="uaccess"
 
 ## Updating from ASL2
 There is no update or migration from ASL2. You’re going to be installing a new Debian OS on your computer, VM or microSD card.
