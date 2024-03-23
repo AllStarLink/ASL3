@@ -21,6 +21,7 @@ Use -t or -b for developer mode.
 - The -s is for sip if you need it still, leave off the -s if you don’t
 - The -d is for DAHDI and is required
 - The -v is to install the latest of the major version specified, 20 in this case
+- Use -f to force a reinstall (upgrade)
 ```
 phreaknet install -d -b -v 20
 ```
