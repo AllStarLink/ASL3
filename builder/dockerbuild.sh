@@ -74,7 +74,7 @@ ALL_PKG_ROOT=$(dirname ${PDIR})
 echo "ALL_PKG_ROOT: ${ALL_PKG_ROOT}"
 echo "GH_REL: ${GH_REL}"
 
-D_TAG="ASL3_builder.${OPERATING_SYSTEMS}.${ARCH}${REPO_ENV}"
+D_TAG="asl3_builder.${OPERATING_SYSTEMS}.${ARCH}${REPO_ENV}"
 
 docker build -f $DIR/Dockerfile -t $D_TAG \
 	--build-arg ARCH="$ARCH" \
