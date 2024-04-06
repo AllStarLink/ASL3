@@ -34,7 +34,7 @@ on:
 
 jobs:
   make-packages:
-    uses: AllStarLink/asl3-update-nodelist/.github/workflows/ephemeral_ec2_run-this.yml@develop
+    uses: AllStarLink/ASL3/.github/workflows/ephemeral_ec2_run-this.yml@develop
     with:
       run-this: ./builder/dockerbuild.sh -a ${{ inputs.arch  }} -o ${{ inputs.os }} --gh-rel ${{ inputs.gh-rel }}
       arch: ${{ inputs.arch == 'armhf' && 'arm64' || inputs.arch == 'aarch64' && 'arm64' || inputs.arch == 'amd64' && 'x86_64' || inputs.arch == 'riscv64' && 'x86_64' || inputs.arch }}
