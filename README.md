@@ -222,6 +222,14 @@ database deltree removes one or more entries. Remove all whitelist entries `data
 
 Remove node 1998 whitelist `database deltree whitelist/1998`
 
+## Tune Menus
+The utility programs `radio-tune-menu` and `simpleusb-tune-menu` have been updated with new options.
+The new options allow you change the operation of the respective channel driver, in realtime, without 
+having to manually edit the `usbradio.conf` or `simpleusb.conf`.
+
+In addition to the updating settings, you can now view the live status of the COS, CTCSS inputs and
+PTT output.  This allows you to easily view and change their settings.
+
 ## Debugging
 
 Previously app\_rpt and associated channels supported setting the debug level with an associated app / channel command.  These app / channel commands have been removed and replaced with the asterisk command:
