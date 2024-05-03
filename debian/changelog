@@ -1,3 +1,9 @@
+asl3 (3.0.0-2) unstable; urgency=medium
+
+  * Prep for auto-build
+
+ -- Jason McCormick <jason@mfamily.org>  Fri, 03 May 2024 17:45:55 -0400
+
 asl3 (3.0.0-1) unstable; urgency=medium
 
   * Initial release
