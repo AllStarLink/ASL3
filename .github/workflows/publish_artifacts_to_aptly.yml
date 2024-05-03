@@ -1,4 +1,3 @@
-
 name: publish_artifacts_to_aptly
 on: 
   workflow_call:
@@ -23,14 +22,10 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -R $RUNNER_TEMP
       - name: Upload to aptly
-        run: find $RUNNER_TEMP/artifacts/ -name "*.deb" | xargs -I {} -d '\n' curl --fail --user ${{secrets.APTLY_API_USER}}:${{secrets.APTLY_API_PASS}} -X POST -F 'file=@"{}"' https://aptly.allstarlink.org/api/files/${{inputs.repo-name}}-incoming
+        run: find $RUNNER_TEMP/artifacts/ -name "*.deb" | xargs -I {} -d '\n' curl --fail --user ${{secrets.APTLY_API_USER}}:${{secrets.APTLY_API_PASS}} -X POST -F 'file=@"{}"' https://repo.allstarlink.org/api/files/${{inputs.repo-name}}-${{inputs.os}}
       - name: Add files to repository
-        run: curl --fail --user ${{secrets.APTLY_API_USER}}:${{secrets.APTLY_API_PASS}} -X POST "https://aptly.allstarlink.org/api/repos/${{inputs.repo-name}}/file/${{inputs.repo-name}}-incoming"
-      - name: Get prefix and distribution
         run: |
-          read prefix distribution < <(echo $(curl --fail --user ${{secrets.APTLY_API_USER}}:${{secrets.APTLY_API_PASS}} -X GET "https://aptly.allstarlink.org/api/publish" | jq -r '.[]|select (.Sources[].Name=="${{inputs.repo-name}}") | .Storage, .Distribution'))
-          echo "PREFIX=${prefix/_/__}" >> "$GITHUB_ENV"
-          echo "DISTRIBUTION=$distribution" >> "$GITHUB_ENV"
+            curl --fail --user ${{secrets.APTLY_API_USER}}:${{secrets.APTLY_API_PASS}} -X POST https://repo.allstarlink.org/api/repos/${{inputs.repo-name}}/file/${{inputs.repo-name}}-${{inputs.os}}
       - name: Publish repository
         run: |
-          curl --fail --user ${{secrets.APTLY_API_USER}}:${{secrets.APTLY_API_PASS}} -X PUT -H "content-Type: application/json" --data '{"Signing": {"Batch": true, "Passphrase": "${{secrets.APTLY_GPG_PASSPHRASE}}"}}' "https://aptly.allstarlink.org/api/publish/$PREFIX:./$DISTRIBUTION"
+          curl --fail --user ${{secrets.APTLY_API_USER}}:${{secrets.APTLY_API_PASS}} -X PUT -H "content-Type: application/json" --data '{"Signing": {"Batch": true, "Passphrase": "${{secrets.APTLY_GPG_PASSPHRASE}}"}}' "https://repo.allstarlink.org/api/publish/:./${{inputs.os}}"

@@ -1,13 +1,8 @@
-name: make_and_publish_pkgs
+name: 'Make and Publish Pkgs'
 run-name: Package ${{ github.event.repository.name }}(${{ github.ref_name }}) for ${{ inputs.os }}/${{ inputs.arch }}, Publish to ${{ inputs.deployment-environment }}
 on: 
   workflow_dispatch:
     inputs:
-      arch:
-        description: 'Platform Architecture'
-        type: choice
-        options:
-        - amd64
       os:
         description: 'Debian Release Version'
         type: choice
@@ -17,32 +12,28 @@ on:
       gh-rel:
         description: 'GitHub Release Tag (for debs)'
         type: string
-      deployment-environment:
+      aptly-repo:
         description: 'Aptly Repository Stream'
         type: choice
         options:
-        - development
-        - testing
-        - production
-      commit-versioning:
-        description: 'Commit Versioning'
+          - beta
+          - devel
+      arch:
+        description: 'Platform Architecture (Do not change)'
         type: choice
         options:
-          - default
-          - yes
-          - no
-
+          - amd64
 jobs:
   make-packages:
-    uses: AllStarLink/ASL3/.github/workflows/ephemeral_ec2_run-this.yml@develop
+    uses: AllStarLink/asl3-update-nodelist/.github/workflows/ephemeral_ec2_run-this.yml@develop
     with:
-      run-this: ./builder/dockerbuild.sh -a ${{ inputs.arch  }} -o ${{ inputs.os }} --gh-rel ${{ inputs.gh-rel }}
+      run-this: ./builder/dockerbuild.sh -a ${{ inputs.arch	}} -o ${{ inputs.os }} --gh-rel ${{ inputs.gh-rel }}
       arch: ${{ inputs.arch == 'armhf' && 'arm64' || inputs.arch == 'aarch64' && 'arm64' || inputs.arch == 'amd64' && 'x86_64' || inputs.arch == 'riscv64' && 'x86_64' || inputs.arch }}
-      artifact-path: '_debs/*'
+      artifact-path: '/actions-runner/_work/asl3-update-nodelist/_debs/'
     secrets: inherit
-#  publish-packages:
-#    uses: AllStarLink/asl3-asterisk/.github/workflows/publish_artifacts_to_aptly.yml@develop
-#    with:
-#      repo-name: asl_builds-${{inputs.os}}${{ inputs.deployment-environment == 'production' && '' || inputs.deployment-environment == 'testing' && '-testing' || inputs.deployment-environment == 'development' && '-devel' || null }}
-#    secrets: inherit
-#    needs: make-packages
+  publish-packages:
+    uses: AllStarLink/asl3-update-nodelist/.github/workflows/publish_artifacts_to_aptly.yml@develop
+    with:
+      repo-name: asl3-${{ inputs.aptly-repo }}
+    secrets: inherit
+    needs: make-packages
