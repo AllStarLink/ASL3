@@ -11,9 +11,8 @@ Rules-Requires-Root: binary-targets
 
 Package: asl3
 Architecture: all
-Depends: ${misc:Depends}, asl3-asterisk, asl3-asterisk-config, asl3-asterisk-doc, asl3-asterisk-modules,
- dahdi-linux, asl3-menu
-Suggests: allmon3, asl3-update-nodelist
+Depends: ${misc:Depends}, asl3-asterisk, dahdi-linux, asl3-menu
+Suggests: allmon3, asl3-update-nodelist, asl3-asterisk-doc
 Description: AllStarLink 3
  AllStarLink’s app_rpt version 3 (ASL3) is the
  next generation of repeater control software.
