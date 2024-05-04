@@ -11,7 +11,12 @@ Rules-Requires-Root: binary-targets
 
 Package: asl3
 Architecture: all
-Recommends: allmon3, asl3-update-nodelist, asl3-menu
+Recommends: allmon3, asl3-update-nodelist
 Depends: ${misc:Depends}, asl3-asterisk, asl3-asterisk-config, asl3-asterisk-dev, asl3-asterisk-doc, asl3-asterisk-modules,
- dkms, dahdi-dkms, dahdi-linux, dahdi-source
-Description: AllStarLink’s app_rpt version 3 (ASL3) is the next generation of repeater control software. This version of app_rpt has been redesigned to run on the latest operating systems and the current version of Asterisk® LTS.
+ dkms, dahdi-dkms, dahdi-linux, dahdi-source, asl3-menu
+Description: AllStarLink 3
+ AllStarLink’s app_rpt version 3 (ASL3) is the
+ next generation of repeater control software.
+ This version of app_rpt has been redesigned to
+ run on the latest operating systems and
+ the current version of Asterisk® LTS.
