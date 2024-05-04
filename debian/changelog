@@ -1,3 +1,9 @@
+asl3 (3.0.0-3) unstable; urgency=medium
+
+  * Reduce package dependencies
+
+ -- Jason McCormick <jason@mfamily.org>  Sat, 04 May 2024 11:30:40 -0400
+
 asl3 (3.0.0-2) unstable; urgency=medium
 
   * Prep for auto-build
