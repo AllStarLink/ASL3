@@ -1,0 +1,157 @@
+#!/usr/bin/bash
+#
+# Copyright 2024 AllStarLink Inc., Jason McCormick N8EI
+#
+# This program is free software: you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# See https://www.gnu.org/licenses/gpl-3.0.txt
+
+BI_AUDIO="/usr/share/asterisk/sounds/en"
+CU_AUDIO="/var/lib/asterisk/sounds/en"
+
+function ast_rx_lp(){
+	asterisk -rx "rpt localplay ${NODE} $1" 2>&1
+}
+
+function build_and_say(){
+	TMPAUD=$(mktemp --suffix=.ulaw)
+	chmod 644 ${TMPAUD}
+	ASTAUD=$(echo ${TMPAUD} | sed -e 's/\.ulaw//g')
+	SIA="-t ul -r 8k -c 1"
+	for e in $*
+	do
+		if [ -f "${CU_AUDIO}/${e}.ulaw" ]; then
+			F_IN="${F_IN} ${SIA} ${CU_AUDIO}/${e}.ulaw"
+			continue
+		fi
+		if [ -f "${BI_AUDIO}/${e}.ulaw" ]; then
+			F_IN="${F_IN} ${SIA} ${BI_AUDIO}/${e}.ulaw"
+			continue
+		fi
+	done
+	sox --combine concatenate -c 1 -r 8k \
+		${F_IN} -t ul ${TMPAUD}
+	ast_rx_lp ${ASTAUD}
+	sleep 10
+	rm ${TMPAUD}
+}
+
+function get_time(){
+	
+	# calculate the hour
+	NOW_H=$(date +%I | sed -e 's/0//g')
+
+	# calculate the minute audio	
+	NOW_M=$(date +%M | sed -e s/'^0//')
+	NOW_FM=$(( ${NOW_M} / 10 ))
+	case ${NOW_FM} in
+		0)	NOW_FM=0 ;;
+		1)	NOW_FM=$(date +%M) ;;
+		*)	NOW_FM="${NOW_FM}0" ;;
+	esac
+	NOW_SM=$(( ${NOW_M} % 10 ))
+	if [ $NOW_FM -eq 0 ] && [ $NOW_SM -eq 0 ]; then
+		$NOW_FM=oclock
+		$NOW_SM=""
+	fi
+	[ $NOW_FM -ge 1 ] && [ $NOW_FM -lt 20 ] && NOW_SM=""
+
+	# am/pm
+	NOW_A=$(date +%P | sed 's/^\([ap]\)\(m\)/\1-\2/')
+
+	# timezone with letters prefix
+	NOW_TZ=$(date +%Z | tr '[A-Z]' '[a-z]' | sed 's/./letters\/& /g')
+	echo "rpt/thetimeis digits/${NOW_H} digits/${NOW_FM} \ 
+		digits/${NOW_SM} digits/${NOW_A} ${NOW_TZ}"
+}
+
+function get_time24(){
+
+	NOW_HR=$(date +%-H)
+	if (( 0 <= ${NOW_HR} && ${NOW_HR} < 19 )); then
+		NOW_HR_FULL="digits/${NOW_HR} hours"		
+	elif (( 20 <= ${NOW_HR } && ${NOW_HR} < 24 )); then
+		A=$(( ${NOW_HR} / 10 ))
+		B=$(( ${NOW_HR} % 10 ))
+		NOW_HR_FULL="digits/${A} digits/${B} hours" 
+	fi
+		
+    # calculate the minute audio
+    NOW_M=$(date +%-M | sed -e s/'^0//')
+	if (( $NOW_M == 0 )); then
+		NOW_MIN_FULL="digits/0 minutes"
+	elif (( 0 < ${NOW_M} && ${NOW_M} < 20 )); then
+		NOW_MIN_FULL="digits/${NOW_M} minutes"
+	else 
+		A=$(( ${NOW_M} / 10 ))
+		B=$(( ${NOW_M} % 10 ))
+		NOW_MIN_FULL="digits/${A}0 digits/${B} minutes"
+	fi
+	
+	# timezone with letters prefix
+	NOW_TZ=$(date +%Z | tr '[A-Z]' '[a-z]' | sed 's/./letters\/& /g')
+	echo "rpt/thetimeis ${NOW_HR_FULL} ${NOW_MIN_FULL} ${NOW_TZ}"
+}
+
+function get_ip4(){
+	IP=$(ip -4 -o a | cut -d ' ' -f 2,7 | cut -d '/' -f 1 |\
+		grep -v 127.0. | awk '{print $2}')
+	for e in $(echo ${IP} | sed 's/./& /g')
+	do
+		case $e in
+			.)	IP_SAY="${IP_SAY} letters/dot" ;;
+			*)	IP_SAY="${IP_SAY} digits/$e" ;;
+		esac
+	done
+	echo "letters/i letters/p ${IP_SAY}"
+}
+
+function get_ip6(){
+	IP=$(ip -6 addr | grep inet6 | awk -F '[ \t]+|/' '{print $3}' |\
+		 grep -v ^::1 | grep -v ^fe80)
+	 for e in $(echo ${IP} | sed 's/./& /g')
+    do
+        case $e in
+            :)  IP_SAY="${IP_SAY} letters/dot" ;;
+            [abcdef])  IP_SAY="${IP_SAY} letters/$e" ;;
+			*)  IP_SAY="${IP_SAY} digits/$e" ;;
+        esac
+    done
+	echo "letters/i letters/p digits/6 ${IP_SAY}"
+}
+
+function usage(){
+	echo "Usage: $0 -n {NODE} -w ( time | ip4 | ip6 )" 1>&2
+	exit 1
+}
+
+while getopts "n:w:" opt; do
+	case ${opt} in
+		n)	NODE="${OPTARG}" ;;
+		w)	WHAT="${OPTARG}" ;;
+		*)	usage ;;
+	esac
+done
+shift $((OPTIND-1))
+
+if [ $NODE -lt 1 ]; then
+	echo "-n {NODE} must be a number greater than 0" 1>&2
+	exit
+fi
+
+case ${WHAT} in
+	time)		build_and_say $(get_time) ;;
+	time24)		build_and_say $(get_time24) ;;
+	ip | ip4) 	build_and_say $(get_ip4) ;;
+	ip6)		build_and_say $(get_ip6) ;;
+	*) 			usage ;;
+esac
+
+exit 0
+
