@@ -127,7 +127,7 @@ function get_ip6(){
 }
 
 function usage(){
-	echo "Usage: $0 -n {NODE} -w ( time | ip4 | ip6 )" 1>&2
+	echo "Usage: $0 -n {NODE} -w ( time | time24 | ip4 | ip6 )" 1>&2
 	exit 1
 }
 
