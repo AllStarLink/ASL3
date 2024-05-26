@@ -6,17 +6,39 @@ ls $USBROOT | while read DEV
 do
 	USBDEV="$USBROOT/$DEV"
 
-	MANF=`cat $USBDEV/manufacturer	2>/dev/null`
-	IDPROD=`cat $USBDEV/idProduct	2>/dev/null`
 	IDVEND=`cat $USBDEV/idVendor	2>/dev/null`
+	case "$IDVEND" in
+	    "0d8c" )								# C108_VENDOR_ID
+		IDPROD=`cat $USBDEV/idProduct	2>/dev/null`
+		if   [ $((16#$IDPROD & 16#fffc)) -eq $((16#000c)) ]; then	# C108_PRODUCT_ID
+			:
+		elif [ $((16#$IDPROD          )) -eq $((16#0012)) ]; then	# C108B_PRODUCT_ID
+			:
+		elif [ $((16#$IDPROD          )) -eq $((16#013c)) ]; then	# C108AH_PRODUCT_ID
+			:
+		elif [ $((16#$IDPROD          )) -eq $((16#013a)) ]; then	# C119A_PRODUCT_ID
+			:
+		elif [ $((16#$IDPROD          )) -eq $((16#0013)) ]; then	# C119B_PRODUCT_ID
+			:
+		elif [ $((16#$IDPROD & 16#ff00)) -eq $((16#6a00)) ]; then	# N1KDO_PRODUCT_ID
+			:
+		elif [ $((16#$IDPROD          )) -eq $((16#0008)) ]; then	# C119_PRODUCT_ID
+			:
+		else
+			continue
+		fi
 
-	if [ -n "$MANF" ] && `grep -q -E "USB.*(ound|udio)" $USBDEV/product`; then
-		PROD="$MANF"
-	elif [ "$IDVEND" = "0d8c" -a "$IDPROD" = "000c" ]; then
-		PROD=`cat $USBDEV/product	2>/dev/null`
-	else
+		MANF=`cat $USBDEV/manufacturer	2>/dev/null`
+		if [ -n "$MANF" ]; then
+			PROD="$MANF"
+		else
+			PROD=`cat $USBDEV/product 2>/dev/null`
+		fi
+		;;
+	    * )
 		continue
-	fi
+		;;
+	esac
 
 	for SUBDEV in `(cd $USBROOT; ls -d ${DEV}* )`
 	do
