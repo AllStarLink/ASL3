@@ -1,0 +1,103 @@
+#!/usr/bin/bash
+#
+# asl-telemetry - Reports anonymous use statistics
+# to AllStarLink.
+# Copyright (C) 2024 AllStarLink, Inc. under
+# the terms of the GPLv3
+#
+
+ASL_TELEM_ETC="${ASL_TELEM_ETC:-/etc/asl-telemetry}"
+ASL_DISPLAY_DATA="${ASL_DISPLAY_DATA:-Y}"
+ASL_REG_SERVERS="34.105.111.212 162.248.92.131"
+
+# Do we have a uuid generated? If not, make
+# one with uuid version 4 (random UUID)
+if [ -f ${ASL_TELEM_ETC} ]; then
+	source ${ASL_TELEM_ETC}
+	if [ "${ASL_UUID}" == "" ]; then
+		ASL_UUID=$(uuid -v4)
+		echo "ASL_UUID=${ASL_UUID}" >> ${ASL_TELEM_ETC}
+	fi
+else
+	ASL_UUID=$(uuid -v4)
+    echo "ASL_UUID=${ASL_UUID}" >> ${ASL_TELEM_ETC}
+fi
+
+# Obtain the running asterisk version
+ASL_AST_VER=$(asterisk -rx 'core show version' 2>&1 | awk '{print $1" "$2}')
+
+# If "$1 $2" is "Unable to" then asterisk is not running or
+# there is a socket/access problem
+if [ "${ASL_AST_VER}" == "Unable to" ]; then
+	exit 0	# note exit as 0 to not foul up systemd
+fi
+
+# Get the local nodes
+ASL_NODES=$(asterisk -rx 'rpt localnodes' | \
+	grep -E '^[0-9]' | tr '\n' ' ')
+
+# Test for ASL registration
+ASL_REG_HTTP=$(asterisk -rx 'rpt show registrations' | \
+	grep -v "HTTP registration" | grep -E '^[0-9a-fA-F]' \
+	| awk '{print $1}')
+ASL_REG_IAX=$(asterisk -rx 'iax2 show registry' | \
+	grep -v "IAX2 registration" | grep -E '^[0-9a-fA-F]' \
+	| awk '{print $1}')
+ASL_REGISTERED="N"
+for i in ${ASL_REG_SERVERS}; do
+	if [[ $i =~ ${ASL_REG_HTTP} ]]; then
+		ASL_REGISTERED="Y"
+	fi
+	if [[ $i =~ ${ASL_REG_IAX} ]]; then
+		ASL_REGISTERED="Y"
+	fi
+done
+
+# If the node isn't reigstered to ASL
+# then stop collecting and exit.
+if [ "${ASL_REGISTERED}" == "N" ]; then
+	exit 0 # note exit as 0 to not foul up systemd
+fi
+
+# Get ASL registrations
+ASL_REG_HTTP=$(asterisk -rx 'rpt show registrations' | \
+    grep -v "HTTP registration" | grep -E '^[0-9a-fA-F]' \
+    | awk '{print $2}' | tr '\n' ',')
+ASL_REG_HTTP=$(echo ${ASL_REG_HTTP} | sed 's/,$//')
+ASL_REG_HTTP="[ ${ASL_REG_HTTP} ]"
+
+ASL_REG_IAX=$(asterisk -rx 'iax2 show registry' | \
+    grep -v "IAX2 registration" | grep -E '^[0-9a-fA-F]' \
+    | awk '{print $3}' | tr '\n' ',')
+ASL_REG_IAX=$(echo ${ASL_REG_IAX} | sed 's/,$//')
+ASL_REG_IAX="[ ${ASL_REG_IAX} ]"
+
+# Get channels
+ASL_CHANS=""
+for N in ${ASL_NODES}; do
+	CHAN=$(asterisk -rx "rpt show channels 460181" | \
+	grep -E '^rxchannel' | awk '{print $3}' \
+	| awk -F/ '{print $1}')
+	ASL_CHANS="${ASL_CHANS} { \"$N\" : \"$CHAN\" }"
+done
+ASL_CHANS="[ ${ASL_CHANS} ]"
+
+# Get uptime
+ASL_UPTIME=$(asterisk -rx 'core show uptime' | \
+	grep -E '^System' | awk '{print $3":"$5":"$7}')
+ASL_RELOAD_TIME=$(asterisk -rx 'core show uptime' | \
+	grep -E '^Last' | awk '{print $3":"$5":"$7}')
+
+if [ "${ASL_DISPLAY_DATA}" == "Y" ]; then
+	echo "ASL_UUID = ${ASL_UUID}"
+	echo "ASL_AST_VER = ${ASL_AST_VER}"
+	echo "ASL_REGISTERED = ${ASL_REGISTERED}"
+	echo "ASL_NODES = ${ASL_NODES}"
+	echo "ASL_HTTP_NODES = ${ASL_REG_HTTP}"
+	echo "ASL_IAX_NODES = ${ASL_REG_IAX}"
+	echo "ASL_CHANS = ${ASL_CHANS}"
+	echo "ASL_UPTIME = ${ASL_UPTIME}"
+	echo "ASL_RELOAD_TIME= ${ASL_RELOAD_TIME}"
+fi
+
+exit 0
