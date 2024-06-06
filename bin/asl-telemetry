@@ -75,7 +75,7 @@ ASL_REG_IAX="[ ${ASL_REG_IAX} ]"
 # Get channels
 ASL_CHANS=""
 for N in ${ASL_NODES}; do
-	CHAN=$(asterisk -rx "rpt show channels 460181" | \
+	CHAN=$(asterisk -rx "rpt show channels ${N}" | \
 	grep -E '^rxchannel' | awk '{print $3}' \
 	| awk -F/ '{print $1}')
 	ASL_CHANS="${ASL_CHANS} { \"$N\" : \"$CHAN\" }"
