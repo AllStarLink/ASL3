@@ -7,7 +7,7 @@
 #
 
 ASL_TELEM_ETC="${ASL_TELEM_ETC:-/etc/asl-telemetry}"
-ASL_DISPLAY_DATA="${ASL_DISPLAY_DATA:-Y}"
+ASL_DISPLAY_DATA="${ASL_DISPLAY_DATA:-N}"
 ASL_REG_SERVERS="34.105.111.212 162.248.92.131"
 
 # Do we have a uuid generated? If not, make
@@ -67,7 +67,7 @@ ASL_REG_HTTP=$(echo ${ASL_REG_HTTP} | sed 's/,$//')
 ASL_REG_HTTP="[ ${ASL_REG_HTTP} ]"
 
 ASL_REG_IAX=$(asterisk -rx 'iax2 show registry' | \
-    grep -v "IAX2 registration" | grep -E '^[0-9a-fA-F]' \
+   grep -v "IAX2 registration" | grep -E '^[0-9a-fA-F]' \
     | awk '{print $3}' | tr '\n' ',')
 ASL_REG_IAX=$(echo ${ASL_REG_IAX} | sed 's/,$//')
 ASL_REG_IAX="[ ${ASL_REG_IAX} ]"
@@ -78,9 +78,9 @@ for N in ${ASL_NODES}; do
 	CHAN=$(asterisk -rx "rpt show channels ${N}" | \
 	grep -E '^rxchannel' | awk '{print $3}' \
 	| awk -F/ '{print $1}')
-	ASL_CHANS="${ASL_CHANS} { \"$N\" : \"$CHAN\" }"
+	ASL_CHANS="${ASL_CHANS} \"$N\" : \"$CHAN\""
 done
-ASL_CHANS="[ ${ASL_CHANS} ]"
+ASL_CHANS="[{ ${ASL_CHANS} }]"
 
 # Get uptime
 ASL_UPTIME=$(asterisk -rx 'core show uptime' | \
@@ -88,16 +88,58 @@ ASL_UPTIME=$(asterisk -rx 'core show uptime' | \
 ASL_RELOAD_TIME=$(asterisk -rx 'core show uptime' | \
 	grep -E '^Last' | awk '{print $3":"$5":"$7}')
 
+
+# OS-level items
+OS_OS=$(uname -s)
+OS_DISTRO=$(lsb_release -i 2>/dev/null | awk '{print $3}')
+OS_RELEASE=$( lsb_release -r 2>/dev/null | awk '{print $2}')
+OS_KERNEL=$(uname -r)
+OS_ARCH=$(uname -m)
+
+# Packages we care about
+PKGS=$(dpkg-query -f='"${binary:Package}" : "${Version}" , ' -W 'asl*' 'dahdi*' 'allmon3*')
+PKGS=$(echo ${PKGS} | sed 's/,$//')
+PKGS="[{ ${PKGS} }]"
+
 if [ "${ASL_DISPLAY_DATA}" == "Y" ]; then
-	echo "ASL_UUID = ${ASL_UUID}"
+	echo "RANDOM_UUID = ${ASL_UUID}"
 	echo "ASL_AST_VER = ${ASL_AST_VER}"
-	echo "ASL_REGISTERED = ${ASL_REGISTERED}"
 	echo "ASL_NODES = ${ASL_NODES}"
 	echo "ASL_HTTP_NODES = ${ASL_REG_HTTP}"
 	echo "ASL_IAX_NODES = ${ASL_REG_IAX}"
 	echo "ASL_CHANS = ${ASL_CHANS}"
 	echo "ASL_UPTIME = ${ASL_UPTIME}"
 	echo "ASL_RELOAD_TIME= ${ASL_RELOAD_TIME}"
+	echo "OS_OS = ${OS_OS}"
+	echo "OS_DISTRO = ${OS_DISTRO}"
+	echo "OS_RELEASE = ${OS_RELEASE}"
+	echo "OS_KERNEL = ${OS_KERNEL}"
+	echo "OS_ARCH = ${OS_ARCH}"
+	echo "PKGS = ${PKGS}"
 fi
+
+TELEM=$(cat - <<EOF
+{
+	"uuid" : "${ASL_UUID}",
+	"ast-ver" : "${ASL_AST_VER}",
+	"nodes" : "${ASL_NODES}",
+	"nodes-reg-http" : "${ASL_REG_HTTP}",
+	"nodes-reg-iax" : "${ASL_REG_IAX}",
+	"nodes-channels" : ${ASL_CHANS},
+	"uptime" : "${ASL_UPTIME}",
+	"reload-time" : "${ASL_RELOAD_TIME}",
+	"os" : "${OS_OS}",
+	"distro" : "${OS_DISTRO}",
+	"release" : "${OS_RELEASE}",
+	"kernel" : "${OS_KERNEL}",
+	"arch" : "${OS_ARCH}",
+	"pkgs" : ${PKGS}
+}
+
+EOF
+)
+
+echo ${TELEM}
+
 
 exit 0
