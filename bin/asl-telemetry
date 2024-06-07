@@ -45,10 +45,9 @@ ASL_REG_IAX=$(asterisk -rx 'iax2 show registry' | \
 	| awk '{print $1}')
 ASL_REGISTERED="N"
 for i in ${ASL_REG_SERVERS}; do
-	if [[ $i =~ ${ASL_REG_HTTP} ]]; then
+	if [[ "$ASL_REG_HTTP" == *"$i"* ]]; then
 		ASL_REGISTERED="Y"
-	fi
-	if [[ $i =~ ${ASL_REG_IAX} ]]; then
+	elif [[ "$ASL_REG_IAX" == *"$i"* ]]; then
 		ASL_REGISTERED="Y"
 	fi
 done
@@ -78,6 +77,9 @@ for N in ${ASL_NODES}; do
 	CHAN=$(asterisk -rx "rpt show channels ${N}" | \
 	grep -E '^rxchannel' | awk '{print $3}' \
 	| awk -F/ '{print $1}')
+    	if [[ -n "$ASL_CHANS" ]]; then
+        	ASL_CHANS="${ASL_CHANS}, "
+    	fi	
 	ASL_CHANS="${ASL_CHANS} \"$N\" : \"$CHAN\""
 done
 ASL_CHANS="[{ ${ASL_CHANS} }]"
