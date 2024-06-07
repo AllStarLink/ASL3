@@ -45,10 +45,9 @@ ASL_REG_IAX=$(asterisk -rx 'iax2 show registry' | \
 	| awk '{print $1}')
 ASL_REGISTERED="N"
 for i in ${ASL_REG_SERVERS}; do
-	if [[ $i =~ ${ASL_REG_HTTP} ]]; then
+	if [[ "$ASL_REG_HTTP" == *"$i"* ]]; then
 		ASL_REGISTERED="Y"
-	fi
-	if [[ $i =~ ${ASL_REG_IAX} ]]; then
+	elif [[ "$ASL_REG_IAX" == *"$i"* ]]; then
 		ASL_REGISTERED="Y"
 	fi
 done
