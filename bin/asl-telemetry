@@ -4,11 +4,25 @@
 # to AllStarLink.
 # Copyright (C) 2024 AllStarLink, Inc. under
 # the terms of the GPLv3
-#
 
-ASL_TELEM_ETC="${ASL_TELEM_ETC:-/etc/asl-telemetry}"
-ASL_DISPLAY_DATA="${ASL_DISPLAY_DATA:-N}"
+function usage(){
+    echo "Usage: $(basename ${0}) [-d] [-f CONFIG]" 1>&2
+    exit 1
+}
+
+ASL_TELEM_ETC=/etc/asl-telemetry
+ASL_DISPLAY_DATA=N
 ASL_REG_SERVERS="34.105.111.212 162.248.92.131"
+
+while getopts "c:dh" opt; do
+	case ${opt} in
+		c) ASL_TELEM_ETC="${OPTARG}" ;;
+		d) ASL_DISPLAY_DATA=Y ;;
+		h) usage ;;
+	esac
+done
+shift $((OPTIND-1))
+
 
 # Do we have a uuid generated? If not, make
 # one with uuid version 4 (random UUID)
@@ -35,6 +49,9 @@ fi
 # Get the local nodes
 ASL_NODES=$(asterisk -rx 'rpt localnodes' | \
 	grep -E '^[0-9]' | tr '\n' ' ')
+ASL_NODES_J=$(echo ${ASL_NODES} | sed s'/ /,/g')
+ASL_NODES_J="[ ${ASL_NODES_J} ]"
+
 
 # Test for ASL registration
 ASL_REG_HTTP=$(asterisk -rx 'rpt show registrations' | \
@@ -47,7 +64,8 @@ ASL_REGISTERED="N"
 for i in ${ASL_REG_SERVERS}; do
 	if [[ "$ASL_REG_HTTP" == *"$i"* ]]; then
 		ASL_REGISTERED="Y"
-	elif [[ "$ASL_REG_IAX" == *"$i"* ]]; then
+	fi
+	if [[ $i =~ ${ASL_REG_IAX} ]]; then
 		ASL_REGISTERED="Y"
 	fi
 done
@@ -77,11 +95,9 @@ for N in ${ASL_NODES}; do
 	CHAN=$(asterisk -rx "rpt show channels ${N}" | \
 	grep -E '^rxchannel' | awk '{print $3}' \
 	| awk -F/ '{print $1}')
-    	if [[ -n "$ASL_CHANS" ]]; then
-        	ASL_CHANS="${ASL_CHANS}, "
-    	fi	
-	ASL_CHANS="${ASL_CHANS} \"$N\" : \"$CHAN\""
+	ASL_CHANS="${ASL_CHANS} \"$N\" : \"$CHAN\","
 done
+ASL_CHANS=$(echo ${ASL_CHANS} | sed 's/,$//')
 ASL_CHANS="[{ ${ASL_CHANS} }]"
 
 # Get uptime
@@ -106,7 +122,7 @@ PKGS="[{ ${PKGS} }]"
 if [ "${ASL_DISPLAY_DATA}" == "Y" ]; then
 	echo "RANDOM_UUID = ${ASL_UUID}"
 	echo "ASL_AST_VER = ${ASL_AST_VER}"
-	echo "ASL_NODES = ${ASL_NODES}"
+	echo "ASL_NODES = ${ASL_NODES_J}"
 	echo "ASL_HTTP_NODES = ${ASL_REG_HTTP}"
 	echo "ASL_IAX_NODES = ${ASL_REG_IAX}"
 	echo "ASL_CHANS = ${ASL_CHANS}"
@@ -118,15 +134,16 @@ if [ "${ASL_DISPLAY_DATA}" == "Y" ]; then
 	echo "OS_KERNEL = ${OS_KERNEL}"
 	echo "OS_ARCH = ${OS_ARCH}"
 	echo "PKGS = ${PKGS}"
+	exit 0
 fi
 
 TELEM=$(cat - <<EOF
 {
 	"uuid" : "${ASL_UUID}",
 	"ast-ver" : "${ASL_AST_VER}",
-	"nodes" : "${ASL_NODES}",
-	"nodes-reg-http" : "${ASL_REG_HTTP}",
-	"nodes-reg-iax" : "${ASL_REG_IAX}",
+	"nodes" : ${ASL_NODES_J},
+	"nodes-reg-http" : ${ASL_REG_HTTP},
+	"nodes-reg-iax" : ${ASL_REG_IAX},
 	"nodes-channels" : ${ASL_CHANS},
 	"uptime" : "${ASL_UPTIME}",
 	"reload-time" : "${ASL_RELOAD_TIME}",
