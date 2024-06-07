@@ -65,7 +65,7 @@ for i in ${ASL_REG_SERVERS}; do
 	if [[ "$ASL_REG_HTTP" == *"$i"* ]]; then
 		ASL_REGISTERED="Y"
 	fi
-	if [[ $i =~ ${ASL_REG_IAX} ]]; then
+	if [[ "${ASL_REG_IAX}" == *"$i"* ]]; then
 		ASL_REGISTERED="Y"
 	fi
 done
