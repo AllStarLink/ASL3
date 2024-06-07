@@ -77,6 +77,9 @@ for N in ${ASL_NODES}; do
 	CHAN=$(asterisk -rx "rpt show channels ${N}" | \
 	grep -E '^rxchannel' | awk '{print $3}' \
 	| awk -F/ '{print $1}')
+    	if [[ -n "$ASL_CHANS" ]]; then
+        	ASL_CHANS="${ASL_CHANS}, "
+    	fi	
 	ASL_CHANS="${ASL_CHANS} \"$N\" : \"$CHAN\""
 done
 ASL_CHANS="[{ ${ASL_CHANS} }]"
