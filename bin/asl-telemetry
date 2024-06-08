@@ -100,7 +100,7 @@ for N in ${ASL_NODES}; do
 	ASL_CHANS="${ASL_CHANS} \"$N\" : \"$CHAN\","
 done
 ASL_CHANS=$(echo ${ASL_CHANS} | sed 's/,$//')
-ASL_CHANS="[{ ${ASL_CHANS} }]"
+ASL_CHANS="{ ${ASL_CHANS} }"
 
 # Get uptime
 ASL_UPTIME=$(asterisk -rx 'core show uptime seconds' | \
@@ -119,7 +119,7 @@ OS_ARCH=$(uname -m)
 # Packages we care about
 PKGS=$(dpkg-query -f='"${binary:Package}" : "${Version}" , ' -W 'asl*' 'dahdi*' 'allmon3*')
 PKGS=$(echo ${PKGS} | sed 's/,$//')
-PKGS="[{ ${PKGS} }]"
+PKGS="{ ${PKGS} }"
 
 if [ "${ASL_DISPLAY_DATA}" == "Y" ]; then
 	echo "RANDOM_UUID = ${ASL_UUID}"
