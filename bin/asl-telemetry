@@ -6,19 +6,21 @@
 # the terms of the GPLv3
 
 function usage(){
-    echo "Usage: $(basename ${0}) [-d] [-f CONFIG]" 1>&2
+    echo "Usage: $(basename ${0}) [-d] [-f CONFIG] [-u URL]" 1>&2
     exit 1
 }
 
 ASL_TELEM_ETC=/etc/asl-telemetry
 ASL_DISPLAY_DATA=N
 ASL_REG_SERVERS="34.105.111.212 162.248.92.131"
+ASL_USAGE_URL="https://repo.allstarlink.org/usage"
 
-while getopts "c:dh" opt; do
+while getopts "c:dhu:" opt; do
 	case ${opt} in
 		c) ASL_TELEM_ETC="${OPTARG}" ;;
 		d) ASL_DISPLAY_DATA=Y ;;
 		h) usage ;;
+		u) ASL_USAGE_URL="${OPTARG}" ;;
 	esac
 done
 shift $((OPTIND-1))
@@ -158,7 +160,8 @@ TELEM=$(cat - <<EOF
 EOF
 )
 
-echo ${TELEM}
-
-
-exit 0
+curl --header "Content-Type: application/json" \
+	--request POST \
+	--data "${TELEM}" \
+	${ASL_USAGE_URL}
+exit $?
