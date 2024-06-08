@@ -103,10 +103,10 @@ ASL_CHANS=$(echo ${ASL_CHANS} | sed 's/,$//')
 ASL_CHANS="[{ ${ASL_CHANS} }]"
 
 # Get uptime
-ASL_UPTIME=$(asterisk -rx 'core show uptime' | \
-	grep -E '^System' | awk '{print $3":"$5":"$7}')
-ASL_RELOAD_TIME=$(asterisk -rx 'core show uptime' | \
-	grep -E '^Last' | awk '{print $3":"$5":"$7}')
+ASL_UPTIME=$(asterisk -rx 'core show uptime seconds' | \
+	grep -E '^System' | awk '{print $3}')
+ASL_RELOAD_TIME=$(asterisk -rx 'core show uptime seconds' | \
+	grep -E '^Last' | awk '{print $3}')
 
 
 # OS-level items
