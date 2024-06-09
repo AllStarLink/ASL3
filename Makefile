@@ -28,14 +28,15 @@ $(DESTDIR)$(docdir)/%: %
 	install -D -m 0644  $< $@
 
 verset:
-	perl -pi -e 's/\@\@HEAD-DEVELOP\@\@/$(RELVER)/g' `grep -rl @@HEAD-DEVELOP@@ src/ web/`
+	perl -pi -e 's/\@\@HEAD-DEVELOP\@\@/$(RELVER)/g' `grep -rl @@HEAD-DEVELOP@@ bin/`
 
-deb:	debclean debprep
+deb:	debclean verset debprep
 	debchange --distribution stable --package $(PKGNAME) \
 		--newversion $(EPOCHVER)$(RELVER)-$(DEBVER).$(RELPLAT) \
 		"Autobuild of $(EPOCHVER)$(RELVER)-$(DEBVER) for $(RELPLAT)"
 	dpkg-buildpackage -b --no-sign
 	git checkout debian/changelog
+	git checkout bin/*
 
 debchange:
 	debchange -v $(RELVER)-$(DEBVER)
