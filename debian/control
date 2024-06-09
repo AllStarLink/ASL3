@@ -2,7 +2,7 @@ Source: asl3
 Section: hamradio
 Priority: optional
 Maintainer: Jason McCormick <jason@mfamily.org>
-Build-Depends: debhelper-compat (= 13)
+Build-Depends: debhelper-compat (= 13), pandoc
 Standards-Version: 4.5.1
 Homepage: https://github.com/AllStarLink/ASL3
 Vcs-Browser: https://github.com/AllStarLink/ASL3

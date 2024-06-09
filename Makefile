@@ -3,8 +3,8 @@
 #
 SRCNAME = ASL3
 PKGNAME = asl3
-RELVER = 3.0.0
-DEBVER = 3
+RELVER = 3.1.0
+DEBVER = 1
 RELPLAT ?= deb$(shell lsb_release -rs 2> /dev/null)
 
 BUILDABLES = \

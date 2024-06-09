@@ -1,0 +1,10 @@
+[Unit]
+Description=Run asl-telemetry
+After=network.target
+
+[Timer]
+OnBootSec=120
+OnUnitActiveSec=24h
+
+[Install]
+WantedBy=timers.target
