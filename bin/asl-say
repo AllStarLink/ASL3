@@ -140,7 +140,7 @@ while getopts "n:w:" opt; do
 done
 shift $((OPTIND-1))
 
-if [ $NODE -lt 1 ]; then
+if [ -z "${NODE}" ] || [ ${NODE} -lt 1 ]; then
 	echo "-n {NODE} must be a number greater than 0" 1>&2
 	exit
 fi
