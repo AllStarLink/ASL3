@@ -1,2 +1,8 @@
 .DS_Store
 ./vscode/
+debian/.debhelper/
+debian/asl3.substvars
+debian/asl3/
+debian/debhelper-build-stamp
+debian/files
+
