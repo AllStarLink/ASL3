@@ -1,6 +1,5 @@
 [Unit]
 Description=Run asl-telemetry
-After=network.target
 
 [Timer]
 OnBootSec=120

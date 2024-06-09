@@ -1,0 +1,13 @@
+[Unit]
+Description=ASL3 Telemetry Package
+After=network.target
+After=asterisk.service
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/asl-telemetry
+
+[Install]
+WantedBy=multi-user.target

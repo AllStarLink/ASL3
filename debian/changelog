@@ -1,22 +1,22 @@
-asl3 (3.1.0-1) stable; urgency=medium
+asl3 (3.1.0-3) stable; urgency=medium
 
   * Add asl-say, asl-telemetry
 
- -- Jason McCormick <jason@mfamily.org>  Sun, 09 Jun 2024 10:53:18 -0400
+ -- Jason McCormick <jason@mfamily.org>  Sun, 09 Jun 2024 11:49:33 -0400
 
-asl3 (3.0.0-3) unstable; urgency=medium
+asl3 (3.0.0-3) stable; urgency=medium
 
   * Reduce package dependencies
 
  -- Jason McCormick <jason@mfamily.org>  Sat, 04 May 2024 11:30:40 -0400
 
-asl3 (3.0.0-2) unstable; urgency=medium
+asl3 (3.0.0-2) stable; urgency=medium
 
   * Prep for auto-build
 
  -- Jason McCormick <jason@mfamily.org>  Fri, 03 May 2024 17:45:55 -0400
 
-asl3 (3.0.0-1) unstable; urgency=medium
+asl3 (3.0.0-1) stable; urgency=medium
 
   * Initial release
 
