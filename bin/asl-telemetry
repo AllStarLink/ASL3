@@ -10,6 +10,22 @@ function usage(){
     exit 1
 }
 
+function check_dep(){
+	if ! which $1 > /dev/null 2>&1; then
+		echo "Error: needed command '${1}' not found in \$PATH"
+		exit 1
+	fi
+}
+
+for d in uuid lsb_release; do
+	check_dep $d
+done
+
+if [ ${UID} -ne 0 ]; then
+	echo "Error: script must be run as root"
+	exit 1
+fi
+
 ASL_TELEM_ETC=/etc/asl-telemetry
 ASL_DISPLAY_DATA=N
 ASL_REG_SERVERS="34.105.111.212 162.248.92.131"
