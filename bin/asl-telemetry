@@ -47,11 +47,11 @@ shift $((OPTIND-1))
 if [ -f ${ASL_TELEM_ETC} ]; then
 	source ${ASL_TELEM_ETC}
 	if [ "${ASL_UUID}" == "" ]; then
-		ASL_UUID=$(uuid -v4)
+		ASL_UUID=$(cat /proc/sys/kernel/random/uuid)
 		echo "ASL_UUID=${ASL_UUID}" >> ${ASL_TELEM_ETC}
 	fi
 else
-	ASL_UUID=$(uuid -v4)
+	ASL_UUID=$(cat /proc/sys/kernel/random/uuid)
     echo "ASL_UUID=${ASL_UUID}" >> ${ASL_TELEM_ETC}
 fi
 
