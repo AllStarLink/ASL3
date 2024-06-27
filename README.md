@@ -6,7 +6,7 @@ The update from Asterisk version 1.4 to 20 implements over 15 years of bug fixes
 
 As part of this update, app\_rpt has been refactored to make the code base easier to maintain and enhance.  This process has been going on for over a year and will continue.  The app\_rpt code base will meet all current Asterisk® coding guidelines.
 
-** See the manual at https://allstarlink.github.io
+**See the manual at https://allstarlink.github.io**
 
 **New Features and improvements**
 - New HTTP AllStarLink registration
