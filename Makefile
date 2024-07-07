@@ -63,6 +63,6 @@ debclean:
 	rm -f debian/*.substvars
 	rm -rf debian/$(SRCNAME)/ debian/.debhelper/
 	rm -f debian/debhelper-build-stamp debian/files debian/$(SRCNAME).substvars
-	rm -f debian/*.debhelper
+	rm -f debian/*.debhelper debian/*.debhelper.log
 
 	
