@@ -1,3 +1,9 @@
+asl3 (3.2.0-1) stable; urgency=medium
+
+  * Include RSA public keys for ASL services 
+
+ -- Jason McCormick <jason@mfamily.org>  Sun, 07 Jul 2024 18:06:41 -0400
+
 asl3 (3.1.1-1) stable; urgency=medium
 
   * Change asl-telemetry default path
