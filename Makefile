@@ -8,7 +8,8 @@ DEBVER = 1
 RELPLAT ?= deb$(shell lsb_release -rs 2> /dev/null)
 
 BUILDABLES = \
-	bin 
+	bin \
+	keys 
 
 ifdef ${DESTDIR}
 DESTDIR=${DESTDIR}
