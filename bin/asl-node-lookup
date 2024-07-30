@@ -1,0 +1,266 @@
+#!/bin/bash
+
+ASL_NODE=""
+USE_NS=""
+VERBOSE=0
+
+# ---------- ---------- ---------- ---------- ----------
+
+if [[ ! -x /usr/bin/host ]]; then
+    echo "This command executes the \"host\" command to collect DNS information"
+    echo "about ASL nodes.  The \"host\" command is not available on this system."
+    if [[ -x /usr/bin/apt ]]; then
+	echo ""
+	echo "To install the \"host\" command, use \"apt install bind9-dnsutils\"."
+    fi
+    exit 1
+fi
+
+# ---------- ---------- ---------- ---------- ----------
+
+usage()
+{
+    echo "Usage: $0 [ --help ] [ --verbose ] [ --ns <name-server> ] <node#>"
+}
+
+do_soa()
+{
+    SOA_HOST=$1
+
+    #
+    # dns SOA record
+    #
+    SOA="$(host -t SOA "${SOA_HOST}" ${USE_NS}		\
+	   | grep -v					\
+		  -e "^Using domain server:"		\
+		  -e "^Name:"				\
+		  -e "^Address:"			\
+		  -e "^Aliases:"			\
+		  -e "^$"				\
+	  )"
+    echo ""
+    echo "SOA ($SOA_HOST)"
+    echo "${SOA}"					\
+	| sed -e "s/^${SOA_HOST} has SOA record //"	\
+	      -e "s/^/  /"
+}
+
+do_ns()
+{
+    NS_HOST=$1
+
+    #
+    # dns NS record
+    #
+    NS="$(host -t NS "${NS_HOST}" ${USE_NS}		\
+	  | grep -v					\
+		 -e "^Using domain server:"		\
+		 -e "^Name:"				\
+		 -e "^Address:"				\
+		 -e "^Aliases:"				\
+		 -e "^$"				\
+	 )"
+    echo ""
+    echo "NS ($NS_HOST)"
+    echo "${NS}"					\
+	| sed -e "s/^/  /"
+}
+
+do_srv()
+{
+    SRV_HOST="_iax._udp.${1}.nodes.allstarlink.org"
+
+    #
+    # node SRV record
+    #
+    SRV="$(host -t SRV "${SRV_HOST}" ${USE_NS}		\
+	   | grep -v					\
+		  -e "^Using domain server:"		\
+		  -e "^Name:"				\
+		  -e "^Address:"			\
+		  -e "^Aliases:"			\
+		  -e "^$"				\
+	  )"
+    echo ""
+    echo "SRV ($SRV_HOST)"
+    re="^${SRV_HOST} has SRV record"
+    if [[ ${SRV} =~ $re ]]; then
+	echo "${SRV}"					\
+	| sed -e "s/^${SRV_HOST} has SRV record //"	\
+	      -e "s/^/  /"
+    else
+	# report no SRV
+	echo "  No SRV record"
+	SRV=""
+    fi
+}
+
+do_a()
+{
+    HOST=$1
+
+    #
+    # node A record
+    #
+    IP4="$(host -t A "${HOST}" ${USE_NS}		\
+	   | grep -v					\
+		  -e "^Using domain server:"		\
+		  -e "^Name:"				\
+		  -e "^Address:"			\
+		  -e "^Aliases:"			\
+		  -e "^$"				\
+	  )"
+    echo ""
+    echo "A ($HOST)"
+    re="^${HOST} has address"
+    if [[ ${IP4} =~ $re ]]; then
+	echo "${IP4}"					\
+	| sed -e "s/^${HOST} has address //"		\
+	      -e "s/^/  /"
+    else
+	# report no address
+	echo "  No address (A) record"
+    fi
+}
+
+do_txt()
+{
+    HOST=$1
+
+    #
+    # node TXT record
+    #
+    TXT="$(host -t TXT ${HOST} ${USE_NS}		\
+	   | grep -v					\
+		  -e "^Using domain server:"		\
+		  -e "^Name:"				\
+		  -e "^Address:"			\
+		  -e "^Aliases:"			\
+		  -e "^$"				\
+	  )"
+    echo ""
+    echo "TXT ($HOST)"
+    re="^${HOST} descriptive text"
+    if [[ ${TXT} =~ $re ]]; then
+	echo "${TXT}"					\
+	| sed -e "s/^${HOST} descriptive text //"	\
+	      -e 's/^"/  /'				\
+	      -e 's/" "/\n    /g'			\
+	      -e 's/"$//'
+    else
+	# report no TXT
+	echo "  No TXT record"
+    fi
+}
+
+do_rpt_lookup()
+{
+    ASL_NODE=$1
+
+    RPT="$(asterisk -x "rpt lookup ${ASL_NODE}"				\
+	   | sed -E							\
+		 -e 's/.*(radio@)/  \1/'				\
+		 -e 's/ *$//'						\
+		 -e 's/([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(\/)/\1:4569\2/'	\
+	  )"
+    echo ""
+    echo "RPT LOOKUP ($ASL_NODE)"
+    echo "${RPT}"
+}
+
+# ---------- ---------- ---------- ---------- ----------
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        "-h" | "--help" )
+            usage
+            exit 1
+	    ;;
+
+        "--ns" ) 
+	    if [[ $# -ge 2 ]]; then
+		USE_NS="$2"
+		shift
+		shift
+	    else
+		usage
+		exit 1
+	    fi
+            ;;
+
+        "-v" | "--verbose" ) 
+            VERBOSE=1
+            shift
+            ;;
+
+	-* )
+	    echo "Unknown argument \"$1\""
+	    exit 1
+	    ;;
+
+	* )
+	    break
+	    ;;
+    esac
+done
+
+case $# in
+    0)	echo "Node not specified"
+	usage
+	exit 1
+	;;
+    1)	ASL_NODE="$1"		# lookup node
+	;;
+    *)	usage			# if too many args
+	exit 1
+	;;
+esac
+
+re=^[0-9]{4,6}$
+if ! [[ $ASL_NODE =~ $re ]]; then
+    echo "Node number not valid (must be 4-6 digits)"
+    exit 1
+fi
+
+if [[ $VERBOSE -gt 0 ]]; then
+    do_soa "nodes.allstarlink.org"
+
+    do_ns  "nodes.allstarlink.org"
+fi
+
+# -----
+
+do_srv $ASL_NODE
+
+if [[ -n "${SRV}" ]]; then
+    ASL_HOST="$(echo ${SRV} | awk '{print $NF}')"
+    ASL_HOST="${ASL_HOST%.}"
+else
+    ASL_HOST="${ASL_NODE}.nodes.allstarlink.org"
+fi
+
+# -----
+
+do_a $ASL_HOST
+
+# -----
+
+do_txt $ASL_HOST
+
+# -----
+
+if [[ -x /usr/sbin/asterisk ]]; then
+    if [[ $EUID -eq 0 || $EUID -eq $(id -u asterisk) ]]; then
+	do_rpt_lookup $ASL_NODE
+    else
+	echo ""
+	echo "Use \"sudo $0 ...\" to include asterisk/rpt results"
+    fi
+fi
+
+# -----
+
+#
+# done!
+#
+echo ""
