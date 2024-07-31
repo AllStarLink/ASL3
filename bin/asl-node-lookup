@@ -161,7 +161,6 @@ do_rpt_lookup()
 	   | sed -E							\
 		 -e 's/.*(radio@)/  \1/'				\
 		 -e 's/ *$//'						\
-		 -e 's/([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(\/)/\1:4569\2/'	\
 	  )"
     echo ""
     echo "RPT LOOKUP ($ASL_NODE)"
