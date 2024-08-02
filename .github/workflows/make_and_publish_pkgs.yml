@@ -23,17 +23,17 @@ on:
         type: choice
         options:
           - amd64
+
+env:
+  APTLY_API_USER: ${{secrets.APTLY_API_USER}}
+  APTLY_API_PASS: ${{secrets.APTLY_API_PASS}}
+  APTLY_GPG_PASSPHRASE: ${{secrets.APTLY_GPG_PASSPHRASE}}
+
 jobs:
   make-packages:
-    uses: AllStarLink/ASL3/.github/workflows/ephemeral_ec2_run-this.yml@develop
+    uses: AllStarLink/asl3-workflows/.github/workflows/ephemeral_ec2_run-this.yml@develop
     with:
-      run-this: ./builder/dockerbuild.sh -a ${{ inputs.arch	}} -o ${{ inputs.os }} --gh-rel ${{ inputs.gh-rel }}
+      run-this: ./builder/dockerbuild.sh -a ${{ inputs.arch	}} -o ${{ inputs.os }} --gh-rel ${{ inputs.gh-rel }} -r ${{ inputs.aptly-repo }} 
       arch: ${{ inputs.arch == 'armhf' && 'arm64' || inputs.arch == 'aarch64' && 'arm64' || inputs.arch == 'amd64' && 'x86_64' || inputs.arch == 'riscv64' && 'x86_64' || inputs.arch }}
-      artifact-path: '/actions-runner/_work/ASL3/_debs/'
+      artifact-path: '/actions-runner/_work/asl3/_debs/'
     secrets: inherit
-  publish-packages:
-    uses: AllStarLink/ASL3/.github/workflows/publish_artifacts_to_aptly.yml@develop
-    with:
-      repo-name: asl3-${{ inputs.aptly-repo }}
-    secrets: inherit
-    needs: make-packages
