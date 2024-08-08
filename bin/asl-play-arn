@@ -1,0 +1,131 @@
+#!/usr/bin/python3
+
+import argparse
+import logging
+import logging.handlers
+import re
+import requests
+import subprocess
+import sys
+import tempfile
+
+from datetime import datetime
+from datetime import time
+from time import sleep
+
+def main():
+	# get the options from the CLI
+	ap = argparse.ArgumentParser(description="Download and play Amateur Radio Newsline")
+	ap.add_argument("--node", help="Allstar Node # to play audio", required=True)
+	ap.add_argument("--when", help="When to play in 24 hour format NNNN - not specifying --when will result in the audo playing immediately")
+	ap.add_argument("--debug", help="enable debug-level logging in syslog", action="store_true")
+	args = ap.parse_args()
+
+	# Setup logging
+	log = logging.getLogger(__name__)
+	lh = logging.StreamHandler()
+	lf = logging.Formatter(fmt='play-arn: %(name)s: %(levelname)s: %(message)s')
+	lh.setFormatter(lf)
+	log.addHandler(lh)
+	if args.debug:
+		log.setLevel(logging.DEBUG)
+	else:
+		log.setLevel(logging.INFO)
+
+	# validate the node number is 4-6 digits
+	noder = r"^[0-9]{4,6}$"
+	if not re.search(noder, args.node):
+		sys.exit("Error: nodes are four to six digits")
+
+	# validate --when is in the future
+	if args.when:
+		numr = r"^[0-9]{4}$"
+		if not re.search(numr, args.when):
+			sys.exit("Error: Time format must be NNNN")
+		now = datetime.now()
+		when = now.replace(
+				hour = int(args.when[:2]),
+				minute = int(args.when[-2:]),
+				second = 0,
+				microsecond = 0
+				)
+		if when < now:
+			sys.exit("Error: --when must occur in the future")
+
+	# download and prepare the file
+	try:
+		# Vars
+		ARN_URL = "https://www.arnewsline.org/s/news.mp3"
+		MP3_OUT = tempfile.NamedTemporaryFile(suffix=".mp3")
+		log.debug("MP3_OUT: " + MP3_OUT.name)
+		WAV_OUT = tempfile.NamedTemporaryFile(suffix=".wav")
+		log.debug("WAV_OUT: " + WAV_OUT.name)
+		UL_OUT = tempfile.NamedTemporaryFile(suffix=".ul")
+		log.debug("UL_OUT: " + UL_OUT.name)
+	
+		# Retrieve the file to a temporary file
+		r = requests.get(ARN_URL)
+		if r:
+			MP3_OUT.write(r.content)
+		else:
+			raise Exception("Failed to retrive ARN file witrh error " + str(r.status_code))
+	
+		# Convert to WAV since sox on Allstar doesn't have .mp3 support
+		wav = "lame -h -S --decode {0:s} {1:s} ".format(MP3_OUT.name, WAV_OUT.name)
+		log.debug("Convert MP3 to WAV: " + wav)
+		res = subprocess.run(
+				wav.split(), 
+				stdout=subprocess.PIPE,
+				stderr=subprocess.STDOUT
+				)
+
+		if res.returncode != 0:
+			raise Exception("COMMAND: {0:s}\n\n OUTPUT:\n{1:s}".format(wav, res.stdout.decode()))
+
+		# Covert WAV to ULAW
+		sox = "sox -v 0.7 {0:s} -r 8k -c 1 -t ul {1:s} ".format(WAV_OUT.name, UL_OUT.name)
+		log.debug("Convert WAV to ULAW: " + sox)
+		res = subprocess.run(
+				sox.split(), 
+				stdout=subprocess.PIPE,
+				stderr=subprocess.STDOUT
+				)
+
+		if res.returncode != 0:
+			raise Exception("COMMAND: {0:s}\n\n OUTPUT:\n{1:s}".format(sox, res.stdout.decode()))
+	
+		# delay the playback until --when if specified
+		if args.when:
+			naptime = (when-datetime.now()).total_seconds()
+			log.debug("sleeping for " + str(naptime))
+			sleep(naptime)
+	
+		# play the audio
+		astplay = [
+				"asterisk",
+				"-rx",
+				"rpt playback {0:s} {1:s}".format(args.node, UL_OUT.name[:-3])
+				]
+		log.debug("Play Asterisk: " + str(astplay))
+		res = subprocess.run(
+				astplay,
+				stdout=subprocess.PIPE,
+				stderr=subprocess.STDOUT
+				)
+		if res.returncode != 0:
+			raise Exception("COMMAND: {0:s}\n\n OUTPUT:\n{1:s}".format(astplay, res.stdout.decode()))
+
+		# sleep for 15 seconds so the playback starts before the
+		# deconstructor deletes the temporary file for UL_OUT
+		# don't want a different script needed to clean up /tmp
+		log.debug("sleeping for 15 seconds for playback to start")
+		sleep(15)
+
+	except Exception as e:
+		sys.exit("Error: " + str(e))
+
+
+
+if __name__ == "__main__":
+	main()
+	sys.exit()
