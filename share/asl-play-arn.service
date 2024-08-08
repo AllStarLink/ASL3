@@ -1,0 +1,13 @@
+[Unit]
+Description=Play ARN on app_rpt
+Wants=asterisk.service
+After=asterisk.service
+
+[Service]
+Type=oneshot
+User=asterisk
+Group=asterisk
+ExecStart=/usr/bin/asl-play-arn --node NODE
+
+[Install]
+WantedBy=multi-user.target

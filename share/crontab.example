@@ -1,0 +1,13 @@
+# This is an example of playing the Amateur Radio Newsline
+# automatically at 1930.  Note change "1999" to your node.
+# See 'man 5 crontab' for how to configure a cron job
+
+# Play newline itself - usually execute 15 minutes before desired time
+15 19 * * 2 /usr/local/bin/allstar-play-arn --when 1930
+
+# Disable timeout timer while newsline is playing and re-enable just before the net
+29 19 * * 2 /usr/bin/asterisk -rx "rpt fun 1999 *927915"
+59 19 * * 2 /usr/bin/asterisk -rx "rpt fun 1999 *927914"
+
+# Play an audio reminder 5 minutes before
+25 19 * * 2 /usr/bin/asterisk -rx "rpt playback 1999 /etc/asterisk/local/arn-5m"

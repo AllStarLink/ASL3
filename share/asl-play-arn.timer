@@ -1,0 +1,10 @@
+[Unit]
+Description=PLay ARN on the schedule
+Requires=asl-play-arn.service
+
+[Timer]
+OnCalendar=Tue *-*-* 19:30:00
+
+[Install]
+WantedBy=timers.target
+
