@@ -9,7 +9,8 @@ RELPLAT ?= deb$(shell lsb_release -rs 2> /dev/null)
 
 BUILDABLES = \
 	bin \
-	keys 
+	keys \
+	share
 
 ifdef ${DESTDIR}
 DESTDIR=${DESTDIR}
