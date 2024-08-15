@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 #
 
-if [ "${USER}" != "root" ]; then
+if [ ${UID} -ne 0 ]; then
 	echo "Must be run as root"
 	exit 1
 fi
@@ -42,7 +42,7 @@ fi
 
 echo ""
 echo "Generating the MOK..."
-test ! -d /var/lib/shim-signed/mok && mkdir -p /var/lib/shim-signed/mok
+mkdir -p /var/lib/shim-signed/mok
 pushd /var/lib/shim-signed/mok > /dev/null
 openssl req -nodes -new -x509 -newkey rsa:2048 -keyout MOK.priv \
 	-outform DER -out MOK.der -days 36500 -subj "/CN=${subj}/"
@@ -55,13 +55,12 @@ echo "bootloader keyring. This does not need to be an incredibly complex"
 echo "password and you may write it down until it's used."
 echo ""
 mokutil --import MOK.der
-popd > /dev/null
-
 if [ $? != 0 ]; then
 	echo "Failed to import the keys; rollback"
 	rm -f /var/lib/shim-signed/mok/MOK*
 	exit 1
 fi
+popd > /dev/null
 
 echo ""
 echo "Setup /etc/dkms/framework.conf.d/asl.conf"
