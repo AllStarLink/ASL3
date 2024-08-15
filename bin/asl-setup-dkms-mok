@@ -1,0 +1,85 @@
+#!/usr/bin/bash
+#
+
+if [ "${USER}" != "root" ]; then
+	echo "Must be run as root"
+	exit 1
+fi
+
+if [ ! -x /usr/bin/mokutil ]; then
+	echo "Missing /usr/bin/mokutil"
+	exit 1
+fi
+
+SBSTATE=$(mokutil --sb-state | awk '{print $2}')
+if [ "${SBSTATE}" != "enabled" ]; then
+	echo "This system is not running SecureBoot"
+	exit 0
+fi
+
+echo "!!!"
+echo "!!! WARNING - RUNNING THIS SCRIPT WILL REGENERATE THE"
+echo "!!! DEFAULT MACHINE OWNER KEY (MOK) FOR SECURE BOOT. IN GENERAL YOU"
+echo "!!! ARE RUNNING THIS SCRIPT BECAUSE YOU NEED TO AND YOU KNOW WHY"
+echo "!!! YOU ARE DOINGING IT. HOWEVER BE WARNED!"
+echo "!!!"
+read -p "ENTER \"galaxy\" TO CONTINUE>> " proceed
+
+if [ "${proceed}" != "galaxy" ]; then
+	exit 1
+fi
+
+echo ""
+echo "Generating an MOK requires a name for the certificate. This can be"
+echo "anything, however your name or your callsign is recommended."
+echo ""
+read -p "Name or callsign>> " subj
+
+if [ -z "${subj}" ]; then
+	echo "MOK subject cannot be blank"
+	exit 1
+fi
+
+echo ""
+echo "Generating the MOK..."
+test ! -d /var/lib/shim-signed/mok && mkdir -p /var/lib/shim-signed/mok
+pushd /var/lib/shim-signed/mok > /dev/null
+openssl req -nodes -new -x509 -newkey rsa:2048 -keyout MOK.priv \
+	-outform DER -out MOK.der -days 36500 -subj "/CN=${subj}/"
+openssl x509 -inform der -in MOK.der -out MOK.pem
+
+echo ""
+echo "Enter a one-time password for this key. This password will be prompted"
+echo "for at the next reboot to properly install the key in the UEFI"
+echo "bootloader keyring. This does not need to be an incredibly complex"
+echo "password and you may write it down until it's used."
+echo ""
+mokutil --import MOK.der
+popd > /dev/null
+
+if [ $? != 0 ]; then
+	echo "Failed to import the keys; rollback"
+	rm -f /var/lib/shim-signed/mok/MOK*
+	exit 1
+fi
+
+echo ""
+echo "Setup /etc/dkms/framework.conf.d/asl.conf"
+cat - > /etc/dkms/framework.conf.d/asl.conf <<EOF
+mok_signing_key="/var/lib/shim-signed/mok/MOK.priv"
+mok_certificate="/var/lib/shim-signed/mok/MOK.der"
+sign_tool="/etc/dkms/asl_sign_helper.sh"
+EOF
+
+echo "Generate /etc/dkms/asl_sign_helper.sh"
+cat - > /etc/dkms/asl_sign_helper.sh <<EOF
+/lib/modules/"\$1"/build/scripts/sign-file sha512 /root/.mok/client.priv /root/.mok/client.der "\$2"
+EOF
+chmod 755 /etc/dkms/asl_sign_helper.sh
+
+echo ""
+echo "You must reboot the system and enter the OTP to load the key into SecureBoot"
+echo "This will appear on your directly-connected monitor or your cloud console"
+echo ""
+
+exit 0
