@@ -12,7 +12,7 @@ Rules-Requires-Root: binary-targets
 Package: asl3
 Architecture: all
 Depends: ${misc:Depends}, asl3-asterisk, asl3-menu, dahdi-linux, lsb-release, 
-  curl, lame, sox
+  bind9-dnsutils, uuid, curl, lame, sox
 Suggests: allmon3, asl3-update-nodelist
 Description: AllStarLink 3
  AllStarLink’s app_rpt version 3 (ASL3) is the

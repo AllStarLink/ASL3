@@ -1,3 +1,8 @@
+> [!CAUTION]
+> For installation of AllStarLink v3, see the [ASL3 Manual](https://allstarlink.github.io) and follow
+> the directions found there. Installation of `.deb` files or source from this repository will not
+> result in a working system. AllStarLink is an ecosystem of software, not a single package.
+
 # AllStarLink Version 3
 
 AllStarLink’s app\_rpt version 3 (ASL3) is the next generation of repeater and hotspot software.  This version of app\_rpt has been redesigned to run on the latest operating systems and the current LTS version of Asterisk® 20. ASL3 runs on Raspberry Pi 3, 4, 5, and Zero 2 W as well as amd64 and x86.
@@ -6,7 +11,6 @@ The update from Asterisk version 1.4 to 20 implements over 15 years of bug fixes
 
 As part of this update, app\_rpt has been refactored to make the code base easier to maintain and enhance.  This process has been going on for over a year and will continue.  The app\_rpt code base will meet all current Asterisk® coding guidelines.
 
-**See the manual at https://allstarlink.github.io**
 
 **New Features and improvements**
 - New HTTP AllStarLink registration
