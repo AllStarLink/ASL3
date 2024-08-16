@@ -1,0 +1,1233 @@
+#!/bin/bash
+#
+# Copyright 2024 AllStarLink Inc., Allan Nathanson WA3WCO
+#
+# This program is free software: you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+# See https://www.gnu.org/licenses/gpl-3.0.txt
+#
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+ASL_DEBUG=""
+ASL_VERSION=$(asl-show-version --asl 2>/dev/null)
+MSGBOX_HEIGHT=12
+MSGBOX_WIDTH=60
+SA818_APPLY=0
+SA818_CONF="/etc/sa818.conf"
+SA818_UPDATED=0
+TITLE="AllStarLink $ASL_VERSION"
+
+logfile=/dev/null
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+check_if_root() {
+    if [[ $EUID != 0 ]]; then
+	/usr/bin/clear
+	whiptail --msgbox "This script must be run as root or with sudo" $MSGBOX_HEIGHT $MSGBOX_WIDTH
+	exit 1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+calc_wt_size() {
+    echo "doing calc_wt_size" >>$logfile
+
+    # Bash knows the terminal size
+    #   The number of columns are $COLUMNS
+    #   The number of lines are $LINES
+
+    if [[ $LINES -lt 22 ]]; then
+	echo "Terminal size must be at least 22 lines."
+	exit 1
+    fi
+    if [[ $COLUMNS -lt 60 ]]; then
+	echo "Terminal size must be at least 60 columns."
+	exit 1
+    fi
+
+    WT_HEIGHT=22
+
+    # Leave full width up to 100 columns
+    WT_WIDTH=$COLUMNS
+    if [[ $COLUMNS -gt 100 ]]; then
+	WT_WIDTH=100
+    fi
+
+    WT_MENU_HEIGHT=$(($WT_HEIGHT - 7))
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_settings_show() {
+    echo "CURRENT_BAND             = $CURRENT_BAND"
+    echo "CURRENT_BANDWIDTH        = $CURRENT_BANDWIDTH"
+    echo "CURRENT_FREQ_RX          = $CURRENT_FREQ_RX"
+    echo "CURRENT_FREQ_TX          = $CURRENT_FREQ_TX"
+    echo "CURRENT_SQUELCH          = $CURRENT_SQUELCH"
+    echo "CURRENT_VOLUME           = $CURRENT_VOLUME"
+    echo "CURRENT_TONE             = $CURRENT_TONE"
+    echo "CURRENT_CTCSS_RX         = $CURRENT_CTCSS_RX"
+    echo "CURRENT_CTCSS_TX         = $CURRENT_CTCSS_TX"
+    echo "CURRENT_DCS_RX           = $CURRENT_DCS_RX"
+    echo "CURRENT_DCS_TX           = $CURRENT_DCS_TX"
+    echo "CURRENT_TAIL_TONE        = $CURRENT_TAIL_TONE"
+    echo "CURRENT_EMPHASIS         = $CURRENT_EMPHASIS"
+    echo "CURRENT_FILTER_HIGH_PASS = $CURRENT_FILTER_HIGH_PASS"
+    echo "CURRENT_FILTER_LOW_PASS  = $CURRENT_FILTER_LOW_PASS"
+    echo "CURRENT_PORT             = $CURRENT_PORT"
+    echo "CURRENT_SPEED            = $CURRENT_SPEED"
+}
+
+do_settings_load() {
+    if [ -r "${SA818_CONF}" ]; then
+	. "${SA818_CONF}"
+    fi
+    CURRENT_BAND=${CURRENT_BAND:-"VHF"}
+    CURRENT_BANDWIDTH=${CURRENT_BANDWIDTH:-"Wide"}
+    CURRENT_FREQ_RX=${CURRENT_FREQ_RX:-"000.0000"}
+    CURRENT_FREQ_TX=${CURRENT_FREQ_TX:-"000.0000"}
+    CURRENT_SQUELCH=${CURRENT_SQUELCH:-"1"}
+    CURRENT_VOLUME=${CURRENT_VOLUME:-"1"}
+    CURRENT_TONE=${CURRENT_TONE:-"None"}
+    CURRENT_CTCSS_RX=${CURRENT_CTCSS_RX:-"None"}
+    CURRENT_CTCSS_TX=${CURRENT_CTCSS_TX:-"None"}
+    CURRENT_DCS_RX=${CURRENT_DCS_RX:-""}
+    CURRENT_DCS_TX=${CURRENT_DCS_TX:-""}
+    CURRENT_TAIL_TONE=${CURRENT_TAIL_TONE:-"Closed"}
+    CURRENT_EMPHASIS=${CURRENT_EMPHASIS:-"Disabled"}
+    CURRENT_FILTER_HIGH_PASS=${CURRENT_FILTER_HIGH_PASS:-"Disabled"}
+    CURRENT_FILTER_LOW_PASS=${CURRENT_FILTER_LOW_PASS:-"Disabled"}
+    CURRENT_PORT=${CURRENT_PORT:-""}
+    CURRENT_SPEED=${CURRENT_SPEED:-""}
+}
+
+do_settings_store() {
+    cat <<__EOT	> "${SA818_CONF}"
+CURRENT_BAND=$CURRENT_BAND
+CURRENT_BANDWIDTH=$CURRENT_BANDWIDTH
+CURRENT_FREQ_RX=$CURRENT_FREQ_RX
+CURRENT_FREQ_TX=$CURRENT_FREQ_TX
+CURRENT_SQUELCH=$CURRENT_SQUELCH
+CURRENT_VOLUME=$CURRENT_VOLUME
+CURRENT_TONE=$CURRENT_TONE
+CURRENT_CTCSS_RX=$CURRENT_CTCSS_RX
+CURRENT_CTCSS_TX=$CURRENT_CTCSS_TX
+CURRENT_DCS_RX=$CURRENT_DCS_RX
+CURRENT_DCS_TX=$CURRENT_DCS_TX
+CURRENT_TAIL_TONE=$CURRENT_TAIL_TONE
+CURRENT_EMPHASIS=$CURRENT_EMPHASIS
+CURRENT_FILTER_HIGH_PASS=$CURRENT_FILTER_HIGH_PASS
+CURRENT_FILTER_LOW_PASS=$CURRENT_FILTER_LOW_PASS
+CURRENT_PORT=$CURRENT_PORT
+CURRENT_SPEED=$CURRENT_SPEED
+__EOT
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+#
+# usage: sa818 [-h] [--debug] [--port PORT] [--speed {300,1200,2400,4800,9600,19200,38400,57600,115200}] {radio,volume,filters,filter,version} ...
+#
+# generate configuration for switch port
+#
+# positional arguments:
+#   {radio,volume,filters,filter,version}
+#     radio               Program the radio (frequency/tome/squelch)
+#     volume              Set the volume level
+#     filters (filter)    Enable/Disable filters
+#     version             Show the firmware version of the SA818
+#
+# options:
+#   -h, --help            show this help message and exit
+#   --debug
+#   --port PORT           Serial port [default: linux console port]
+#   --speed {300,1200,2400,4800,9600,19200,38400,57600,115200}
+#                         Connection speed
+#
+# You can specify a different code for transmit and receive by separating them by a comma.
+# > Example: --ctcss 94.8,127.3 or --dcs 043N,047N
+#
+# CTCSS codes (PL Tones)
+# 67.0, 71.9, 74.4, 77.0, 79.7, 82.5, 85.4, 88.5, 91.5, 94.8, 97.4,
+# 100.0, 103.5, 107.2, 110.9, 114.8, 118.8, 123.0, 127.3, 131.8, 136.5,
+# 141.3, 146.2, 151.4, 156.7, 162.2, 167.9, 173.8, 179.9, 186.2, 192.8,
+# 203.5, 210.7, 218.1, 225.7, 233.6, 241.8, 250.3
+#
+# DCS Codes:
+# DCS codes must be followed by N or I for Normal or Inverse:
+# > Example: 047I
+# 023, 025, 026, 031, 032, 036, 043, 047, 051, 053, 054, 065, 071, 072,
+# 073, 074, 114, 115, 116, 125, 131, 132, 134, 143, 152, 155, 156, 162,
+# 165, 172, 174, 205, 223, 226, 243, 244, 245, 251, 261, 263, 265, 271,
+# 306, 311, 315, 331, 343, 346, 351, 364, 365, 371, 411, 412, 413, 423,
+# 431, 432, 445, 464, 465, 466, 503, 506, 516, 532, 546, 565, 606, 612,
+# 624, 627, 631, 632, 654, 662, 664, 703, 712, 723, 731, 732, 734, 743,
+# 754
+#
+
+do_sa818_update_radio() {
+    #
+    # usage: sa818 radio [-h] [--bw {0,1}] --frequency FREQUENCY [--offset OFFSET] [--squelch SQUELCH] [--ctcss CTCSS | --dcs DCS] [--tail TAIL]
+    #   --bw {0,1}            Bandwidth 0=NARROW (12.5KHz), 1=WIDE (25KHx) [default: WIDE]
+    #   --frequency FREQUENCY
+    #                         Receive frequency
+    #   --offset OFFSET       Offset in MHz, 0 for no offset [default: 0.0]
+    #   --squelch SQUELCH     Squelch value (0 to 8) [default: 4]
+    #   --ctcss CTCSS         CTCSS (PL Tone) 0 for no CTCSS [default: None]
+    #   --dcs DCS             DCS code must be the number followed by [N normal] or [I inverse] [default: None]
+    #   --tail TAIL           Close CTCSS Tail Tone (Open/Close)
+    #
+    sa818_cmd=("${sa818_cmd_base[@]}" "radio")
+
+    if [[ "$CURRENT_BANDWIDTH" = "Narrow" ]]; then
+	sa818_cmd+=("--bw" "0")
+    else
+	sa818_cmd+=("--bw" "1")
+    fi
+
+    sa818_cmd+=("--frequency" "$CURRENT_FREQ_RX")
+
+    if [[ "$CURRENT_FREQ_RX" != "$CURRENT_FREQ_TX" ]]; then
+	SA818_OFFSET=$(awk "BEGIN {printf \"%.4f\", $CURRENT_FREQ_TX - $CURRENT_FREQ_RX}")
+	sa818_cmd+=("--offset" "$SA818_OFFSET")
+    fi
+
+    sa818_cmd+=("--squelch" "$CURRENT_SQUELCH")
+
+    case "$CURRENT_TONE" in
+	"CTCSS" )
+	    if [[ "$CURRENT_CTCSS_RX" != "None" || "$CURRENT_CTCSS_TX" != "None" ]]; then
+		sa818_cmd+=("--ctcss" "$CURRENT_CTCSS_TX,$CURRENT_CTCSS_RX")
+		if [[ "$CURRENT_TAIL_TONE" = "Opened" ]]; then
+		    sa818_cmd+=("--tail"  "open")
+		else
+		    sa818_cmd+=("--tail"  "close")
+		fi
+	    fi
+	    ;;
+	"DCS" )
+	    if [[ "$CURRENT_DCS_RX" != "" || "$CURRENT_DCS_TX" != "" ]]; then
+		sa818_cmd+=("--dcs" "$CURRENT_DCS_TX,$CURRENT_DCS_RX")
+	    fi
+	    ;;
+    esac
+
+    echo ""
+    echo "# ${sa818_cmd[@]}"
+    ${sa818_cmd[@]}
+}
+
+do_sa818_update_volume() {
+    #
+    # usage: sa818 volume [-h] [--level LEVEL]
+    #   --level LEVEL  Volume value (1 to 8) [default: 4]
+    #
+    sa818_cmd=("${sa818_cmd_base[@]}" "volume")
+    sa818_cmd+=("--level" "$CURRENT_VOLUME")
+
+    echo ""
+    echo "# ${sa818_cmd[@]}"
+    ${sa818_cmd[@]}
+}
+
+do_sa818_update_filters() {
+    #
+    # usage: sa818 filters [-h] [--emphasis EMPHASIS] [--highpass HIGHPASS] [--lowpass LOWPASS]
+    #   --emphasis EMPHASIS  [Pr/De]-emphasis (Enable/Disable) [default: disable]
+    #   --highpass HIGHPASS  High pass filter (Enable/Disable) [default: disable]
+    #   --lowpass LOWPASS    Low pass filters (Enable/Disable) [default: disable]
+    #
+
+    sa818_cmd=("${sa818_cmd_base[@]}" "filters")
+    if [[ "$CURRENT_EMPHASIS" = "Enabled" ]]; then
+	sa818_cmd+=("--emphasis" "enable")
+    else
+	sa818_cmd+=("--emphasis" "disable")
+    fi
+    if [[ "$CURRENT_FILTER_HIGH_PASS" = "Enabled" ]]; then
+	sa818_cmd+=("--highpass" "enable")
+    else
+	sa818_cmd+=("--highpass" "disable")
+    fi
+    if [[ "$CURRENT_FILTER_LOW_PASS" = "Enabled" ]]; then
+	sa818_cmd+=("--lowpass"  "enable")
+    else
+	sa818_cmd+=("--lowpass"  "disable")
+    fi
+
+    echo ""
+    echo "# ${sa818_cmd[@]}"
+    ${sa818_cmd[@]}
+}
+
+do_sa818_validate() {
+    echo "doing do_sa818_validate"		>>$logfile
+
+    OK=1
+
+    FIX_RX=""
+    validate_frequency $CURRENT_FREQ_RX
+    if [[ $? -eq 0 ]]; then
+	FIX_RX=" <---"
+	OK=0
+    fi
+
+    FIX_TX=""
+    validate_frequency $CURRENT_FREQ_TX
+    if [[ $? -eq 0 ]]; then
+	FIX_TX=" <---"
+	OK=0
+    fi
+
+    return $OK
+}
+
+do_sa818_update() {
+    echo "doing do_sa818_update"		>>$logfile
+
+    do_sa818_validate
+    if [[ $? -eq 0 ]]; then
+	return 0
+    fi
+
+    sa818_cmd_base=("sa818")
+    if [[ -n "$ASL_DEBUG" ]]; then
+	sa818_cmd_base+=("$ASL_DEBUG")
+    fi
+    if [[ -n "$CURRENT_PORT" ]]; then
+	sa818_cmd_base+=("--port" "$CURRENT_PORT")
+    fi
+    if [[ -n "$CURRENT_SPEED" ]]; then
+	sa818_cmd_base+=("--speed" "$CURRENT_SPEED")
+    fi
+
+    do_sa818_update_radio
+    do_sa818_update_volume
+    do_sa818_update_filters
+    echo ""
+
+    return 1
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_enable_disable() {
+    echo "doing do_enable_disable"		>>$logfile
+
+    SETTING_DESC="$1"
+    SETTING_VAL="$2"
+
+    YES_BUTTON="Enable"
+    YES_ANSWER="Enabled"
+    NO_BUTTON="Disable"
+    NO_ANSWER="Disabled"
+    if [[ -n "$3" ]]; then
+	YES_BUTTON="$3"
+	YES_ANSWER="$4"
+	NO_BUTTON="$5"
+	NO_ANSWER="$6"
+    fi
+
+    DEFAULT_BUTTON=""
+    if [[ "$SETTING_VAL" = "$NO_ANSWER" ]]; then
+	DEFAULT_BUTTON="--defaultno"
+    fi
+
+    whiptail					\
+	--title "$TITLE"			\
+	--yes-button "$YES_BUTTON"		\
+	--no-button  "$NO_BUTTON"		\
+	$DEFAULT_BUTTON				\
+	--yesno "The $SETTING_DESC is currently \"${SETTING_VAL,,}\".\n\nDo you want to ${YES_BUTTON,,} the $SETTING_DESC?"	\
+	$WT_HEIGHT $WT_WIDTH			\
+	3>&1 1>&2 2>&3
+    case $? in
+	0 ) ANSWER="$YES_ANSWER"
+	    ;;
+	1 ) ANSWER="$NO_ANSWER"
+	    ;;
+	* ) return 0
+	    ;;
+    esac
+
+    return 1
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+set_band_limits() {
+    case $CURRENT_BAND in
+	"VHF" )
+	    F_MIN="134.0000"
+	    F_MAX="174.0000"
+	    ;;
+	"UHF" )
+	    F_MIN="400.0000"
+	    F_MAX="480.0000"
+	    ;;
+    esac
+
+    F_MIN_MHZ="${F_MIN%.*}"
+    F_MAX_MHZ="${F_MAX%.*}"
+}
+
+validate_frequency() {
+    F=$1
+
+    set_band_limits
+
+    F_MHZ="${F%.*}"
+    if [[ $F_MHZ -ge $F_MIN_MHZ && $F_MHZ -le $F_MAX_MHZ ]]; then
+	return 1
+    fi
+
+    return 0
+}
+
+request_frequency() {
+    RX_TX_NAME=$1
+    CURRENT_FREQ=$2
+
+    set_band_limits
+
+    while true; do
+	calc_wt_size
+
+	ANSWER=$(whiptail				\
+		    --title "$TITLE"			\
+		    --inputbox "The current ${RX_TX_NAME} frequency is $CURRENT_FREQ MHz\n\nEnter frequency in MHz (xxx.xxxx) :"	\
+		    $MSGBOX_HEIGHT $MSGBOX_WIDTH	\
+		    "$CURRENT_FREQ"			\
+		    3>&1 1>&2 2>&3)
+	if [[ $? -ne 0 ]]; then
+	    return 0
+	fi
+
+	re=^[0-9]{3,3}\.[0-9]\*$
+	if [[ $ANSWER =~ $re ]]; then
+	    F_MHZ="${ANSWER%.*}"
+	    if [[ $F_MHZ -ge $F_MIN_MHZ && $F_MHZ -le $F_MAX_MHZ ]]; then
+		ANSWER=$(printf "%.4f" "$ANSWER")
+		break
+	    fi
+	fi
+
+	whiptail								\
+	    --msgbox "The frequency must be between $F_MIN and $F_MAX MHz"	\
+	    $MSGBOX_HEIGHT $MSGBOX_WIDTH
+    done
+
+    return 1
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+CTCSS_TONES=(										\
+		"None"  "67.0"  "71.9"  "74.4"  "77.0"  "79.7"  "82.5"  "85.4"  "88.5"	\
+		"91.5"  "94.8"  "97.4"  "100.0" "103.5" "107.2" "110.9" "114.8" "118.8"	\
+		"123.0" "127.3" "131.8" "136.5" "141.3" "146.2" "151.4" "156.7"		\
+		"162.2" "167.9" "173.8" "179.9" "186.2" "192.8" "203.5" "210.7"		\
+		"218.1" "225.7" "233.6" "241.8" "250.3"					\
+	    )
+
+#
+#   ctcss_index $ANSWER
+#   if [[ $? -ne 0 ]]; then
+#	echo "CTCSS tone index = $SA818_CTCSS_TONE"
+#	sleep 5
+#   fi
+#
+ctcss_index() {
+    CURRENT_CTCSS=$1
+
+    # Loop through the array
+    for i in "${!CTCSS_TONES[@]}"; do
+	if [[ "${CTCSS_TONES[$i]}" = "$CURRENT_CTCSS" ]]; then
+	    SA818_CTCSS_TONE=$(printf "%.4d" "$i")
+	    return 1
+	fi
+    done
+
+    return 0
+}
+
+do_ctcss_select() {
+    echo "doing do_ctcss_select"			>>$logfile
+
+    RX_TX_NAME=$1
+    CURRENT_CTCSS=$2
+
+    ctcss_tones=()
+    for i in "${!CTCSS_TONES[@]}"; do
+	t="${CTCSS_TONES[$i]}"
+	if [[ "$t" = "$CURRENT_CTCSS" ]]; then
+	    ONOFF="ON"
+	else
+	    ONOFF="OFF"
+	fi
+	if [ $i -gt 0 ]; then
+	    t="$t Hz"
+	fi
+	ctcss_tones+=("$t" "$ONOFF")
+    done
+    #echo ${ctcss_tones[@]}
+
+    ANSWER=$(whiptail					\
+		--title "$TITLE"			\
+		--noitem				\
+		--scrolltext				\
+		--radiolist "Select the CTCSS $RX_TX_NAME tone (use tab to change, arrow keys to scroll, space bar to select)"	\
+		$WT_HEIGHT $WT_WIDTH			\
+		$WT_MENU_HEIGHT				\
+		"${ctcss_tones[@]}"			\
+		3>&1 1>&2 2>&3)
+    if [[ $? -ne 0 ]]; then
+	return 0
+    fi
+
+    ANSWER="${ANSWER% Hz}"
+    return 1
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+DCS_CODES=(										\
+		"023" "025" "026" "031" "032" "036" "043" "047" "051" "053" "054"	\
+		"065" "071" "072" "073" "074" "114" "115" "116" "125" "131" "132"	\
+		"134" "143" "152" "155" "156" "162" "165" "172" "174" "205" "223"	\
+		"226" "243" "244" "245" "251" "261" "263" "265" "271" "306" "311"	\
+		"315" "331" "343" "346" "351" "364" "365" "371" "411" "412" "413"	\
+		"423" "431" "432" "445" "464" "465" "466" "503" "506" "516" "532"	\
+		"546" "565" "606" "612" "624" "627" "631" "632" "654" "662" "664"	\
+		"703" "712" "723" "731" "732" "734" "743" "754"				\
+	    )
+
+do_dcs_select() {
+    echo "doing do_dcs_select"			>>$logfile
+
+    RX_TX_NAME=$1
+    CURRENT_DCS=$2
+
+    dcs_codes=()
+    for t in "${DCS_CODES[@]}"; do
+	for x in "I" "N"; do
+	    code="$t$x"
+	    if [[ "$code" = "$CURRENT_DCS" ]]; then
+		ONOFF="ON"
+	    else
+		ONOFF="OFF"
+	    fi
+	    dcs_codes+=("$code" "$ONOFF")
+	done
+    done
+    #echo ${dcs_codes[@]}
+
+    ANSWER=$(whiptail					\
+		--title "$TITLE"			\
+		--noitem				\
+		--scrolltext				\
+		--radiolist "Select the DCS $RX_TX_NAME code (use tab to change, arrow keys to scroll, space bar to select)"	\
+		$WT_HEIGHT $WT_WIDTH			\
+		$WT_MENU_HEIGHT				\
+		"${dcs_codes[@]}"			\
+		3>&1 1>&2 2>&3)
+    if [[ $? -ne 0 ]]; then
+	return 0
+    fi
+
+    ANSWER="${ANSWER% Hz}"
+    return 1
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_update_band() {
+    echo "doing do_update_band"			>>$logfile
+
+    if [[ "$CURRENT_BAND" = "VHF" ]]; then
+	VHF_ON="ON"
+	UHF_ON="OFF"
+    else
+	VHF_ON="OFF"
+	UHF_ON="ON"
+    fi
+
+    ANSWER=$(whiptail					\
+		--title "$TITLE"			\
+		--default-item "$CURRENT_BAND"		\
+		--noitem				\
+		--radiolist "Select the band.\n\nUse the arrow keys to scroll and the space bar to select."	\
+		$WT_HEIGHT $WT_WIDTH			\
+		2					\
+		"VHF"	"$VHF_ON"			\
+		"UHF"	"$UHF_ON"			\
+		3>&1 1>&2 2>&3)
+    if [[ $? -ne 0 ]]; then
+	return
+    fi
+
+    if [[ $ANSWER != $CURRENT_BAND ]]; then
+	CURRENT_BAND=$ANSWER
+	SA818_UPDATED=1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_update_bandwidth() {
+    echo "doing do_update_bandwidth"		>>$logfile
+
+    if [[ "$CURRENT_BANDWIDTH" = "Narrow" ]]; then
+	NARROW_ON="ON"
+	WIDE_ON="OFF"
+    else
+	NARROW_ON="OFF"
+	WIDE_ON="ON"
+    fi
+
+    ANSWER=$(whiptail					\
+		--title "$TITLE"			\
+		--default-item "$CURRENT_BANDWIDTH"	\
+		--noitem				\
+		--radiolist "Select the bandwidth (Narrow = 12.5KHz, Wide = 25.0KHz).\n\nUse the arrow keys to scroll and the space bar to select."	\
+		$WT_HEIGHT $WT_WIDTH			\
+		2					\
+		"Narrow" "$NARROW_ON"			\
+		"Wide"	 "$WIDE_ON"			\
+		3>&1 1>&2 2>&3)
+    if [[ $? -ne 0 ]]; then
+	return
+    fi
+
+    if [[ $ANSWER != $CURRENT_BANDWIDTH ]]; then
+	CURRENT_BANDWIDTH=$ANSWER
+	SA818_UPDATED=1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_update_rx_freq() {
+    echo "doing do_update_rx_freq"		>>$logfile
+
+    request_frequency "receive" $CURRENT_FREQ_RX
+    if [[ $? -eq 0 ]]; then
+	return
+    fi
+
+    if [[ $ANSWER != $CURRENT_FREQ_RX ]]; then
+	CURRENT_FREQ_RX=$ANSWER
+	SA818_UPDATED=1
+    fi
+
+    if [[ "$CURRENT_FREQ_TX" = "000.0000" ]]; then
+	CURRENT_FREQ_TX=$CURRENT_FREQ_RX
+	SA818_UPDATED=1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_update_tx_freq() {
+    echo "doing do_update_tx_freq"		>>$logfile
+
+    request_frequency "transmit" $CURRENT_FREQ_TX
+    if [[ $? -eq 0 ]]; then
+	return
+    fi
+
+    if [[ $ANSWER != $CURRENT_FREQ_TX ]]; then
+	CURRENT_FREQ_TX=$ANSWER
+	SA818_UPDATED=1
+    fi
+
+    if [[ "$CURRENT_FREQ_RX" = "000.0000" ]]; then
+	CURRENT_FREQ_RX=$CURRENT_FREQ_TX
+	SA818_UPDATED=1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_update_squelch() {
+    echo "doing do_update_squelch"		>>$logfile
+
+    while true; do
+	calc_wt_size
+
+	ANSWER=$(whiptail				\
+		    --title "$TITLE"			\
+		    --inputbox "The current squelch value is $CURRENT_SQUELCH.\n\nEnter new squelch value (0-8) :"	\
+		    $MSGBOX_HEIGHT $MSGBOX_WIDTH	\
+		    "$CURRENT_SQUELCH"			\
+		    3>&1 1>&2 2>&3)
+	if [[ $? -ne 0 ]]; then
+	    return
+	fi
+
+	re=^[0-9]\+$
+	if [[ $ANSWER =~ $re && $ANSWER -ge 0 && $ANSWER -le 8 ]]; then
+	    break
+	fi
+
+	whiptail --msgbox "The squelch value must be a number between 0 and 8" $MSGBOX_HEIGHT $MSGBOX_WIDTH
+    done
+
+    if [[ $ANSWER != $CURRENT_SQUELCH ]]; then
+	CURRENT_SQUELCH=$ANSWER
+	SA818_UPDATED=1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_update_volume() {
+    echo "doing do_update_volume"		>>$logfile
+
+    while true; do
+	calc_wt_size
+
+	ANSWER=$(whiptail				\
+		    --title "$TITLE"			\
+		    --inputbox "The current volume level is $CURRENT_VOLUME.\n\nEnter new volume level (1-8) :"	\
+		    $MSGBOX_HEIGHT $MSGBOX_WIDTH	\
+		    "$CURRENT_VOLUME"			\
+		    3>&1 1>&2 2>&3)
+	if [[ $? -ne 0 ]]; then
+	    return
+	fi
+
+	re=^[0-9]\+$
+	if [[ $ANSWER =~ $re && $ANSWER -ge 1 && $ANSWER -le 8 ]]; then
+	    break
+	fi
+
+	whiptail --msgbox "The volume must be a number between 1 and 8" $MSGBOX_HEIGHT $MSGBOX_WIDTH
+    done
+
+    if [[ $ANSWER != $CURRENT_VOLUME ]]; then
+	CURRENT_VOLUME=$ANSWER
+	SA818_UPDATED=1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_update_tone() {
+    echo "doing do_update_tone"			>>$logfile
+
+    if   [[ "$CURRENT_TONE" = "CTCSS" ]]; then
+	TONE_NONE="OFF"
+	TONE_CTCSS="ON"
+	TONE_DCS="OFF"
+    elif [[ "$CURRENT_TONE" = "DCS" ]]; then
+	TONE_NONE="OFF"
+	TONE_CTCSS="OFF"
+	TONE_DCS="ON"
+    else
+	TONE_NONE="ON"
+	TONE_CTCSS="OFF"
+	TONE_DCS="OFF"
+    fi
+
+    ANSWER=$(whiptail					\
+		--title "$TITLE"			\
+		--default-item "$CURRENT_TONE"		\
+		--noitem				\
+		--radiolist "Use a sub-audible tone?\n\nUse the arrow keys to scroll and the space bar to select."	\
+		$WT_HEIGHT $WT_WIDTH			\
+		3					\
+		"None"	"$TONE_NONE"			\
+		"CTCSS"	"$TONE_CTCSS"			\
+		"DCS"	"$TONE_DCS"			\
+		3>&1 1>&2 2>&3)
+    if [[ $? -ne 0 ]]; then
+	return
+    fi
+
+    if [[ $ANSWER != $CURRENT_TONE ]]; then
+	CURRENT_TONE=$ANSWER
+	SA818_UPDATED=1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_update_rx_ctcss() {
+    echo "doing do_update_rx_ctcss"		>>$logfile
+
+    do_ctcss_select "receive" $CURRENT_CTCSS_RX
+    if [[ $? -eq 0 ]]; then
+	return
+    fi
+
+    if [[ $ANSWER != $CURRENT_CTCSS_RX ]]; then
+	CURRENT_CTCSS_RX=$ANSWER
+	if [[ "$ANSWER" = "None" || "$CURRENT_CTCSS_TX" = "None" ]]; then
+	    # if setting to (or from) "None", set both
+	    CURRENT_CTCSS_TX=$ANSWER
+	fi
+	SA818_UPDATED=1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_update_tx_ctcss() {
+    echo "doing do_update_tx_ctcss"		>>$logfile
+
+    do_ctcss_select "transmit" $CURRENT_CTCSS_TX
+    if [[ $? -eq 0 ]]; then
+	return
+    fi
+
+    if [[ $ANSWER != $CURRENT_CTCSS_TX ]]; then
+	CURRENT_CTCSS_TX=$ANSWER
+	if [[ "$ANSWER" = "None" || "$CURRENT_CTCSS_RX" = "None" ]]; then
+	    # if setting to (or from) "None", set both
+	    CURRENT_CTCSS_RX=$ANSWER
+	fi
+	SA818_UPDATED=1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_update_rx_dcs() {
+    echo "doing do_update_rx_dcs"		>>$logfile
+
+    do_dcs_select "receive" $CURRENT_DCS_RX
+    if [[ $? -eq 0 ]]; then
+	return
+    fi
+
+    if [[ $ANSWER != $CURRENT_DCS_RX ]]; then
+	CURRENT_DCS_RX=$ANSWER
+	if [[ "$CURRENT_DCS_TX" = "" ]]; then
+	    # if changing from "", set both
+	    CURRENT_DCS_TX=$ANSWER
+	fi
+	SA818_UPDATED=1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_update_tx_dcs() {
+    echo "doing do_update_tx_dcs"		>>$logfile
+
+    do_dcs_select "transmit" $CURRENT_DCS_TX
+    if [[ $? -eq 0 ]]; then
+	return
+    fi
+
+    if [[ $ANSWER != $CURRENT_DCS_TX ]]; then
+	CURRENT_DCS_TX=$ANSWER
+	if [[ "$CURRENT_DCS_RX" = "" ]]; then
+	    # if changing from "", set both
+	    CURRENT_DCS_RX=$ANSWER
+	fi
+	SA818_UPDATED=1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_update_tail_tone() {
+    echo "doing do_update_tail_tone"		>>$logfile
+
+    do_enable_disable					\
+	"$CURRENT_TONE tail tone (reverse burst)"	\
+	$CURRENT_TAIL_TONE				\
+	"Open"	"Opened"				\
+	"Close"	"Closed"
+    if [[ $? -eq 0 ]]; then
+	return
+    fi
+
+    if [[ $ANSWER != $CURRENT_TAIL_TONE ]]; then
+	CURRENT_TAIL_TONE=$ANSWER
+	SA818_UPDATED=1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_update_emphasis() {
+    echo "doing do_update_emphasis"		>>$logfile
+
+    do_enable_disable					\
+	"Audio pre-emphasis/de-emphasis"		\
+	$CURRENT_EMPHASIS
+    if [[ $? -eq 0 ]]; then
+	return
+    fi
+
+    if [[ $ANSWER != $CURRENT_EMPHASIS ]]; then
+	CURRENT_EMPHASIS=$ANSWER
+	SA818_UPDATED=1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_update_filter_high_pass() {
+    echo "doing do_update_filter_high_pass"	>>$logfile
+
+    do_enable_disable					\
+	"Audio high-pass filter"			\
+	$CURRENT_FILTER_HIGH_PASS
+    if [[ $? -eq 0 ]]; then
+	return
+    fi
+
+    if [[ $ANSWER != $CURRENT_FILTER_HIGH_PASS ]]; then
+	CURRENT_FILTER_HIGH_PASS=$ANSWER
+	SA818_UPDATED=1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_update_filter_low_pass() {
+    echo "doing do_update_filter_low_pass"	>>$logfile
+
+    do_enable_disable					\
+	"Audio low-pass filter"				\
+	$CURRENT_FILTER_LOW_PASS
+    if [[ $? -eq 0 ]]; then
+	return
+    fi
+
+    if [[ $ANSWER != $CURRENT_FILTER_LOW_PASS ]]; then
+	CURRENT_FILTER_LOW_PASS=$ANSWER
+	SA818_UPDATED=1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_update_port() {
+    echo "doing do_update_port"			>>$logfile
+
+    DISPLAY_PORT="$CURRENT_PORT"
+    if [[ -z "$CURRENT_PORT" ]]; then
+	DISPLAY_PORT="the \"default\" linux serial port"
+    fi
+
+    while true; do
+	calc_wt_size
+
+	ANSWER=$(whiptail				\
+		    --title "$TITLE"			\
+		    --inputbox "The current serial port used to program the SA818 chip is ${DISPLAY_PORT}.\n\nEnter serial device path (e.g. \"/dev/serial0\" or blank for the default port) :"	\
+		    $MSGBOX_HEIGHT $MSGBOX_WIDTH	\
+		    "$CURRENT_PORT"			\
+		    3>&1 1>&2 2>&3)
+	if [[ $? -ne 0 ]]; then
+	    return 0
+	fi
+
+	if [[ -z "${ANSWER}" ]]; then
+	    # if blank, use default linux console port
+	    break
+	else
+	    re=^/dev/.*$
+	    if [[ $ANSWER =~ $re && -e "${ANSWER}" ]]; then
+		# if /dev/...
+		break
+	    fi
+	fi
+
+	whiptail								\
+	    --msgbox "Please enter a valid serial device path (e.g. \"/dev/serial0\") or leave blank to use the default linux console port"	\
+	    $MSGBOX_HEIGHT $MSGBOX_WIDTH
+    done
+
+    if [[ $ANSWER != $CURRENT_PORT ]]; then
+	CURRENT_PORT=$ANSWER
+	SA818_UPDATED=1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_update_speed() {
+    echo "doing do_update_speed"		>>$logfile
+
+    SPEEDS=("Default" "300" "1200" "2400" "4800" "9600" "19200" "38400" "57600" "115200")
+
+    SELECTED_SPEED="$CURRENT_SPEED"
+    if [[ -z "$CURRENT_SPEED" ]]; then
+	SELECTED_SPEED="Default"
+    fi
+
+    speeds=()
+    for i in "${!SPEEDS[@]}"; do
+	s="${SPEEDS[$i]}"
+	if [[ "$s" = "$SELECTED_SPEED" ]]; then
+	    ONOFF="ON"
+	else
+	    ONOFF="OFF"
+	fi
+	speeds+=("$s" "$ONOFF")
+    done
+    #echo ${speeds[@]}
+
+    ANSWER=$(whiptail					\
+		--title "$TITLE"			\
+		--default-item "$CURRENT_SPEED"		\
+		--noitem				\
+		--radiolist "Select the connection speed.\n\nUse the arrow keys to scroll and the space bar to select."	\
+		$WT_HEIGHT $WT_WIDTH			\
+		${#SPEEDS[@]}				\
+		${speeds[@]}				\
+		3>&1 1>&2 2>&3)
+    if [[ $? -ne 0 ]]; then
+	return
+    fi
+
+    if [[ "$ANSWER" = "Default" ]]; then
+	ANSWER=""
+    fi
+
+    if [[ $ANSWER != $CURRENT_SPEED ]]; then
+	CURRENT_SPEED=$ANSWER
+	SA818_UPDATED=1
+    fi
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+do_main_menu() {
+    echo "do_main_menu"				>>$logfile
+
+    DEFAULT_ITEM=0
+
+    while true; do
+	calc_wt_size
+
+	menuarr=()
+	case "${CURRENT_TONE}" in
+	    "CTCSS" )
+		#
+		# RX tone
+		#
+		RX_EXT=""
+		if [[ "$CURRENT_CTCSS_RX" != "None" ]]; then
+		    RX_EXT=" Hz"
+		fi
+		menuarr+=("8"  "CTCSS RX Tone                   : ${CURRENT_CTCSS_RX}${RX_EXT}")
+		CURRENT_RX_TONE_TAG="8"
+
+		#
+		# TX tone
+		#
+		TX_EXT=""
+		if [[ "$CURRENT_CTCSS_TX" != "None" ]]; then
+		    TX_EXT=" Hz"
+		fi
+		menuarr+=("9"  "CTCSS TX Tone                   : ${CURRENT_CTCSS_TX}${TX_EXT}")
+
+		#
+		# Reverse Burst (tail tone)
+		#
+		if [[ "$CURRENT_CTCSS_RX" != "None" || "$CURRENT_CTCSS_RX" != "None" ]]; then
+		    menuarr+=("10" "CTCSS Reverse Burst (Tail Tone) : $CURRENT_TAIL_TONE")
+		fi
+		;;
+	    "DCS"   )
+		menuarr+=("8"  "DCS RX Code                     : $CURRENT_DCS_RX")
+		menuarr+=("9"  "DCS TX Code                     : $CURRENT_DCS_TX")
+		;;
+	esac
+
+	DISPLAY_PORT="$CURRENT_PORT"
+	if [[ -z "$CURRENT_PORT" ]]; then
+	    DISPLAY_PORT="Default"
+	fi
+
+	DISPLAY_SPEED="$CURRENT_SPEED"
+	if [[ -z "$CURRENT_SPEED" ]]; then
+	    DISPLAY_SPEED="Default"
+	fi
+
+	do_sa818_validate
+
+	EXIT_LABEL="Exit"
+	if [[ $SA818_UPDATED -ne 0 ]]; then
+	    EXIT_LABEL="Update, Exit"
+	fi
+
+	CHOICE=$(whiptail								\
+		    --title "$TITLE"							\
+		    --default-item=$DEFAULT_ITEM					\
+		    --menu "SA818 Setup Menu"						\
+		    $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT				\
+		    --ok-button "Select"						\
+		    --cancel-button "$EXIT_LABEL"					\
+	    "1" "Band                            : $CURRENT_BAND"			\
+	    "2" "Bandwidth                       : $CURRENT_BANDWIDTH"			\
+	    "3" "Receive Frequency               : $CURRENT_FREQ_RX MHz${FIX_RX}"	\
+	    "4" "Transmit Frequency              : $CURRENT_FREQ_TX MHz${FIX_TX}"	\
+	    "5" "Squelch Value (0-8)             : $CURRENT_SQUELCH"			\
+	    "6" "Volume (1-8)                    : $CURRENT_VOLUME"			\
+	    "7" "Sub-audible tone                : $CURRENT_TONE"			\
+	    "${menuarr[@]}"								\
+	    "E" "Pre-Emphasis/De-emphasis        : $CURRENT_EMPHASIS"			\
+	    "H" "High pass Filter                : $CURRENT_FILTER_HIGH_PASS"		\
+	    "L" "Low pass Filter                 : $CURRENT_FILTER_LOW_PASS"		\
+	    ""  ""									\
+	    "P" "Serial Port                     : $DISPLAY_PORT"			\
+	    "S" "Connection Speed                : $DISPLAY_SPEED"			\
+	    3>&1 1>&2 2>&3)
+	RC=$?
+	if [[ $RC -ne 0 ]]; then
+	    return $RC
+	fi
+
+	case "$CHOICE" in
+	    1 )	do_update_band
+		;;
+	    2 )	do_update_bandwidth
+		;;
+	    3 )	do_update_rx_freq
+		;;
+	    4 )	do_update_tx_freq
+		;;
+	    5 )	do_update_squelch
+		;;
+	    6 )	do_update_volume
+		;;
+	    7 )	do_update_tone
+		;;
+	    8 ) case "${CURRENT_TONE}" in
+		    "CTCSS" )
+			do_update_rx_ctcss
+			;;
+		    "DCS" )
+			do_update_rx_dcs
+			;;
+		esac
+		;;
+	    9 ) case "${CURRENT_TONE}" in
+		    "CTCSS" )
+			do_update_tx_ctcss
+			;;
+		    "DCS" )
+			do_update_tx_dcs
+			;;
+		esac
+		;;
+	    10) do_update_tail_tone
+		;;
+	    E ) do_update_emphasis
+		;;
+	    H ) do_update_filter_high_pass
+		;;
+	    L ) do_update_filter_low_pass
+		;;
+	    P )	do_update_port
+		;;
+	    S )	do_update_speed
+		;;
+	    "" )
+		;;
+	    * )	whiptail --msgbox "$CHOICE is an unrecognized selection." $MSGBOX_HEIGHT $MSGBOX_WIDTH
+		continue
+		;;
+	esac
+
+	DEFAULT_ITEM=$CHOICE
+    done
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
+usage() {
+    echo "Usage: $0 [ --apply ] [ --debug ]"
+    echo ""
+    echo "Options :"
+    echo "  --apply	[Re-]apply the saved configuration to SA818 (without the menu)"
+    echo "  --debug	Enable \"sa818\" debugging"
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+	"--apply" )
+	    SA818_APPLY=1
+	    shift
+	    ;;
+
+	"--debug" )
+	    ASL_DEBUG="--debug"
+	    logfile=/tmp/sa818.log
+	    shift
+	    ;;
+
+	"--help" )
+	    usage
+	    exit 0
+	    ;;
+
+	* )
+	    usage
+	    exit 1
+    esac
+done
+
+check_if_root
+do_settings_load
+
+if [[ $SA818_APPLY -ne 0 ]]; then
+    do_sa818_validate
+    if [[ $? -eq 0 ]]; then
+	echo "$0: error: stored frequencies are out of band"
+	exit 1
+    fi
+
+    do_sa818_update
+    if [[ $? -eq 0 ]]; then
+	echo "$0: error: could not update SA818"
+	exit 1
+    fi
+
+    echo "SA818 update complete"
+    exit 0
+fi
+
+/usr/bin/clear
+
+while true; do
+    do_main_menu
+    if [[ $? -eq 255 ]]; then
+	# if ESC
+	exit 0
+    fi
+
+    if [[ $SA818_UPDATED -eq 0 ]]; then
+	# if no changes
+	exit 0
+    fi
+
+    do_settings_store
+    do_sa818_update
+    if [[ $? -ne 0 ]]; then
+	# if save/update complete
+	echo "SA818 update complete"
+	break
+    fi
+
+    # save/update failed, stay in the menu
+done
+
+exit 0
