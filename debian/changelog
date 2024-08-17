@@ -1,3 +1,12 @@
+asl3 (3.3.0-1) stable; urgency=medium
+
+  * Add asl-node-lookup command (#88)
+  * Add asl-play-arn script (#92)
+  * Add UEFI MOK script support (#93) 
+  * Move sa818 and sa818-menu to asl3 from asl3-pi-appliance (#95)
+
+ -- Jason McCormick <jason@mfamily.org>  Fri, 16 Aug 2024 20:13:49 -0400
+
 asl3 (3.2.0-1) stable; urgency=medium
 
   * Include RSA public keys for ASL services 
