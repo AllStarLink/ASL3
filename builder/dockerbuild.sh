@@ -20,6 +20,11 @@ while [[ $# -gt 0 ]]; do
       shift
       shift
       ;;
+	-r)
+      APTLY_REPO="asl3-$2"
+      shift
+      shift	
+      ;;
 	-*|--*|*)
       echo "Unknown option $1"
 	  shift
@@ -86,6 +91,21 @@ docker build -f $DIR/Dockerfile -t $D_TAG \
 docker run -v $ALL_PKG_ROOT:/build $D_TAG
 
 DEBIAN_FRONTEND=noninteractive apt-get -y install gh
-gh release upload -R AllStarLink/ASL3 $GH_REL $ALL_PKG_ROOT/_debs/*.deb
+gh release upload -R AllStarLink/asl3 $GH_REL $ALL_PKG_ROOT/_debs/*.deb
 
 docker image rm --force $D_TAG
+
+APTLY_USER="${APTLY_API_USER}:${APTLY_API_PASS}"
+
+find $ALL_PKG_ROOT/_debs/*.deb -name "*.deb" | \
+	xargs -I {} -d '\n' curl --fail --user ${APTLY_USER} \
+	-X POST -F 'file=@"{}"' \
+	 https://repo-admin.allstarlink.org/api/files/${APTLY_REPO}-${OPERATING_SYSTEMS}
+
+curl --fail --user ${APTLY_USER} -X POST \
+	https://repo-admin.allstarlink.org/api/repos/${APTLY_REPO}/file/${APTLY_REPO}-${OPERATING_SYSTEMS}
+
+curl --fail --user ${APTLY_USER} -X PUT -H "content-Type: application/json" \
+	--data "{\"Signing\": {\"Batch\": true, \"Passphrase\": \"${APTLY_GPG_PASSPHRASE}\"}}" \
+	"https://repo-admin.allstarlink.org/api/publish/:./${OPERATING_SYSTEMS}"
+
