@@ -1,0 +1,24 @@
+// Permit asterisk user to manage asterisk.service and allmon3.service
+polkit.addRule(function(action, subject) {
+    if ( action.id == "org.freedesktop.systemd1.manage-units" &&
+			subject.user == "asterisk" && (
+   		     	action.lookup("unit") == "asterisk.service" ||
+				action.lookup("unit") == "allmon3.service")
+		)
+ 		{ return polkit.Result.YES; }
+});
+
+// Permit asterisk user to shutdown and reboot
+polkit.addRule(function(action, subject) {
+    if ( subject.user == "asterisk" && 
+			(
+			action.id == "org.freedesktop.login1.reboot" ||
+			 action.id == "org.freedesktop.login1.reboot-ignore-inhibit" ||
+			 action.id == "org.freedesktop.login1.reboot-multiple-sessions" ||
+			 action.id == "org.freedesktop.login1.power-off" ||
+			 action.id == "org.freedesktop.login1.power-off-multiple-sessions" ||
+			 action.id == "org.freedesktop.login1.power-off-ignore-inhibit"
+			)
+        )
+        { return polkit.Result.YES; }
+});
