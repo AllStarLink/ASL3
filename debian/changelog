@@ -1,3 +1,10 @@
+asl3 (3.4.0-1) stable; urgency=medium
+
+  * Add PolicyKit rules and helper scripts for asterisk
+    ability to start/stop
+
+ -- Jason McCormick <jason@mfamily.org>  Sun, 01 Sep 2024 15:46:25 -0400
+
 asl3 (3.3.0-1) stable; urgency=medium
 
   * Add asl-node-lookup command (#88)
