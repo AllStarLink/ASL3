@@ -1,6 +1,5 @@
-sysconfdir      ?= /etc
-polkitdir    	?= $(sysconfdir)/polkit-1/rules.d
-astsrcdir		?= $(sysconfdir)/asterisk/scripts
+polkitdir    	?= /usr/share/polkit-1/rules.d
+astsrcdir		?= /etc/asterisk/scripts
 
 POLKIT_RULES = \
 	50-asl3.rules
