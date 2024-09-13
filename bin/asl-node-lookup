@@ -244,7 +244,7 @@ do_a $ASL_HOST
 
 # -----
 
-do_txt $ASL_HOST
+do_txt ${ASL_NODE}.nodes.allstarlink.org
 
 # -----
 
