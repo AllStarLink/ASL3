@@ -15,6 +15,11 @@
 BI_AUDIO="/usr/share/asterisk/sounds/en"
 CU_AUDIO="/var/lib/asterisk/sounds/en"
 
+# date/time (for testing with "-d yyyymmdd" and "-t hhmm"))
+ALT_DATE=""
+ALT_TIME=""
+ALT_DATE_TIME=""
+
 function ast_rx_lp(){
 	asterisk -rx "rpt localplay ${NODE} $1" 2>&1
 }
@@ -43,60 +48,72 @@ function build_and_say(){
 }
 
 function get_time(){
-	
-	# calculate the hour
-	NOW_H=$(date +%I | sed -e 's/0//g')
 
-	# calculate the minute audio	
-	NOW_M=$(date +%M | sed -e s/'^0//')
-	NOW_FM=$(( ${NOW_M} / 10 ))
-	case ${NOW_FM} in
-		0)	NOW_FM=0 ;;
-		1)	NOW_FM=$(date +%M) ;;
-		*)	NOW_FM="${NOW_FM}0" ;;
-	esac
-	NOW_SM=$(( ${NOW_M} % 10 ))
-	if [ $NOW_FM -eq 0 ] && [ $NOW_SM -eq 0 ]; then
-		$NOW_FM=oclock
-		$NOW_SM=""
+	# calculate the hour
+	NOW_H=$(date ${ALT_DATE_TIME} +%I | sed -e 's/0//g')
+	NOW_H_FULL="digits/${NOW_H}"
+
+	# calculate the minute audio
+	NOW_M=$(date ${ALT_DATE_TIME} +%0M | sed -e s/'^0//')
+	if (( ${NOW_M} == 0 )); then
+		NOW_M_FULL="digits/oclock"
+	elif (( ${NOW_M} < 10 )); then
+		NOW_M_FULL="digits/oh digits/${NOW_M}"
+	elif (( ${NOW_M} < 20 )); then
+		NOW_M_FULL="digits/${NOW_M}"
+	else
+		A=$(( ${NOW_M} / 10 ))
+		B=$(( ${NOW_M} % 10 ))
+		if (( $B == 0 )); then
+			NOW_M_FULL="digits/${A}0"
+		else
+			NOW_M_FULL="digits/${A}0 digits/${B}"
+		fi
 	fi
-	[ $NOW_FM -ge 1 ] && [ $NOW_FM -lt 20 ] && NOW_SM=""
 
 	# am/pm
-	NOW_A=$(date +%P | sed 's/^\([ap]\)\(m\)/\1-\2/')
+	NOW_A=$(date ${ALT_DATE_TIME} +%P | sed 's/^\([ap]\)\(m\)/\1-\2/')
 
 	# timezone with letters prefix
-	NOW_TZ=$(date +%Z | tr '[A-Z]' '[a-z]' | sed 's/./letters\/& /g')
-	echo "rpt/thetimeis digits/${NOW_H} digits/${NOW_FM} \ 
-		digits/${NOW_SM} digits/${NOW_A} ${NOW_TZ}"
+	NOW_TZ=$(date ${ALT_DATE_TIME} +%Z | tr '[A-Z]' '[a-z]' | sed 's/./letters\/& /g')
+
+	echo "rpt/thetimeis ${NOW_H_FULL} ${NOW_M_FULL} digits/${NOW_A} ${NOW_TZ}"
 }
 
 function get_time24(){
 
-	NOW_HR=$(date +%-H)
-	if (( 0 <= ${NOW_HR} && ${NOW_HR} < 19 )); then
-		NOW_HR_FULL="digits/${NOW_HR} hours"		
-	elif (( 20 <= ${NOW_HR } && ${NOW_HR} < 24 )); then
-		A=$(( ${NOW_HR} / 10 ))
-		B=$(( ${NOW_HR} % 10 ))
-		NOW_HR_FULL="digits/${A} digits/${B} hours" 
+	# calculate the hour audio
+	NOW_H=$(date ${ALT_DATE_TIME} +%-H)
+	if (( ${NOW_H} < 20 )); then
+		NOW_H_FULL="digits/${NOW_H} hours"
+	else
+		A=$(( ${NOW_H} / 10 ))
+		B=$(( ${NOW_H} % 10 ))
+		if (( $B == 0 )); then
+			NOW_H_FULL="digits/${A}0 hours"
+		else
+			NOW_H_FULL="digits/${A}0 digits/${B} hours"
+		fi
 	fi
-		
-    # calculate the minute audio
-    NOW_M=$(date +%-M | sed -e s/'^0//')
-	if (( $NOW_M == 0 )); then
-		NOW_MIN_FULL="digits/0 minutes"
-	elif (( 0 < ${NOW_M} && ${NOW_M} < 20 )); then
-		NOW_MIN_FULL="digits/${NOW_M} minutes"
-	else 
+
+	# calculate the minute audio
+	NOW_M=$(date ${ALT_DATE_TIME} +%0M | sed -e s/'^0//')
+	if (( ${NOW_M} < 20 )); then
+		NOW_M_FULL="digits/${NOW_M} minutes"
+	else
 		A=$(( ${NOW_M} / 10 ))
 		B=$(( ${NOW_M} % 10 ))
-		NOW_MIN_FULL="digits/${A}0 digits/${B} minutes"
+		if (( $B == 0 )); then
+			NOW_M_FULL="digits/${A}0 minutes"
+		else
+			NOW_M_FULL="digits/${A}0 digits/${B} minutes"
+		fi
 	fi
-	
+
 	# timezone with letters prefix
-	NOW_TZ=$(date +%Z | tr '[A-Z]' '[a-z]' | sed 's/./letters\/& /g')
-	echo "rpt/thetimeis ${NOW_HR_FULL} ${NOW_MIN_FULL} ${NOW_TZ}"
+	NOW_TZ=$(date ${ALT_DATE_TIME} +%Z | tr '[A-Z]' '[a-z]' | sed 's/./letters\/& /g')
+
+	echo "rpt/thetimeis ${NOW_H_FULL} ${NOW_M_FULL} ${NOW_TZ}"
 }
 
 function get_ip4(){
@@ -115,14 +132,14 @@ function get_ip4(){
 function get_ip6(){
 	IP=$(ip -6 addr | grep inet6 | awk -F '[ \t]+|/' '{print $3}' |\
 		 grep -v ^::1 | grep -v ^fe80)
-	 for e in $(echo ${IP} | sed 's/./& /g')
-    do
-        case $e in
-            :)  IP_SAY="${IP_SAY} letters/dot" ;;
-            [abcdef])  IP_SAY="${IP_SAY} letters/$e" ;;
+	for e in $(echo ${IP} | sed 's/./& /g')
+	do
+		case $e in
+			:)  IP_SAY="${IP_SAY} letters/dot" ;;
+			[abcdef])  IP_SAY="${IP_SAY} letters/$e" ;;
 			*)  IP_SAY="${IP_SAY} digits/$e" ;;
-        esac
-    done
+		esac
+	done
 	echo "letters/i letters/p digits/6 ${IP_SAY}"
 }
 
@@ -131,10 +148,12 @@ function usage(){
 	exit 1
 }
 
-while getopts "n:w:" opt; do
+while getopts "n:w:d:t:" opt; do
 	case ${opt} in
 		n)	NODE="${OPTARG}" ;;
 		w)	WHAT="${OPTARG}" ;;
+		d)	ALT_DATE="${OPTARG}" ;;
+		t)	ALT_TIME="${OPTARG}" ;;
 		*)	usage ;;
 	esac
 done
@@ -143,6 +162,29 @@ shift $((OPTIND-1))
 if [ -z "${NODE}" ] || [ ${NODE} -lt 1 ]; then
 	echo "-n {NODE} must be a number greater than 0" 1>&2
 	exit
+fi
+
+if [ -n "${ALT_DATE}${ALT_TIME}" ]; then
+	if [ -n "${ALT_DATE}" ]; then
+		re=^[0-9]{8}$
+		if ! [[ ${ALT_DATE} =~ $re ]]; then
+			echo "Alternate date must be YYYYMMDD"
+			exit 1
+		fi
+	else
+		ALT_DATE=$(date +%Y%m%d)
+	fi
+	if [ -n "${ALT_TIME}" ]; then
+		re=^[0-9]{4}$
+		if ! [[ ${ALT_TIME} =~ $re ]]; then
+			echo "Alternate time must be HHMM"
+			exit 1
+		fi
+	else
+		ALT_TIME=$(date +%H%M)
+	fi
+	touch -t "${ALT_DATE}${ALT_TIME}" /tmp/asl-say-date-reference
+	ALT_DATE_TIME="-r /tmp/asl-say-date-reference"
 fi
 
 case ${WHAT} in
