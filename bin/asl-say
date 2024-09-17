@@ -15,6 +15,7 @@
 BI_AUDIO="/usr/share/asterisk/sounds/en"
 CU_AUDIO="/var/lib/asterisk/sounds/en"
 
+DATE_ARG=""
 DATE_CMD="date"
 
 function ast_rx_lp(){
@@ -22,6 +23,12 @@ function ast_rx_lp(){
 }
 
 function build_and_say(){
+
+	if [[ -n "$ASL_SAY_TESTING" ]]; then
+		echo "[$DATE_ARG] $*"
+		exit
+	fi
+
 	TMPAUD=$(mktemp --suffix=.ulaw)
 	chmod 644 ${TMPAUD}
 	ASTAUD=$(echo ${TMPAUD} | sed -e 's/\.ulaw//g')
@@ -45,13 +52,13 @@ function build_and_say(){
 }
 
 function get_time(){
+	HOUR=$(eval $DATE_CMD +%I | sed -e 's/^0//')
+	MINUTE=$(eval $DATE_CMD +%M | sed -e 's/^0//')
 
-	# calculate the hour
-	HOUR=$($DATE_CMD +%I | sed -e 's/0//g')
+	# add the hour audio
 	HOUR_FULL="digits/${HOUR}"
 
-	# calculate the minute audio
-	MINUTE=$($DATE_CMD +%0M | sed -e s/'^0//')
+	# add the minute audio
 	if (( ${MINUTE} == 0 )); then
 		MINUTE_FULL="digits/oclock"
 	elif (( ${MINUTE} < 10 )); then
@@ -68,47 +75,53 @@ function get_time(){
 		fi
 	fi
 
-	# am/pm
-	AM_PM=$($DATE_CMD +%P | sed 's/^\([ap]\)\(m\)/\1-\2/')
+	# add am/pm
+	AM_PM=$(eval $DATE_CMD +%P | sed 's/^\([ap]\)\(m\)/\1-\2/')
 
-	# timezone with letters prefix
-	TIMEZONE=$($DATE_CMD +%Z | tr '[A-Z]' '[a-z]' | sed 's/./letters\/& /g')
+	# add the timezone with letters prefix
+	TIMEZONE=$(eval $DATE_CMD +%Z | tr '[A-Z]' '[a-z]' | sed 's/./letters\/& /g')
 
 	echo "rpt/thetimeis ${HOUR_FULL} ${MINUTE_FULL} digits/${AM_PM} ${TIMEZONE}"
 }
 
 function get_time24(){
+	HOUR=$(eval $DATE_CMD +%-H)
+	MINUTE=$(eval $DATE_CMD +%0M | sed -e 's/^0//')
 
-	# calculate the hour audio
-	HOUR=$($DATE_CMD +%-H)
-	if (( ${HOUR} < 20 )); then
-		HOUR_FULL="digits/${HOUR} hours"
+	# add the hour audio
+	if (( ${HOUR} == 0 )); then
+		HOUR_FULL="digits/0"
+	elif (( ${HOUR} < 10 )); then
+		HOUR_FULL="digits/oh digits/${HOUR}"
+	elif (( ${HOUR} < 20 )); then
+		HOUR_FULL="digits/${HOUR}"
 	else
 		A=$(( ${HOUR} / 10 ))
 		B=$(( ${HOUR} % 10 ))
 		if (( $B == 0 )); then
-			HOUR_FULL="digits/${A}0 hours"
+			HOUR_FULL="digits/${HOUR}"
 		else
-			HOUR_FULL="digits/${A}0 digits/${B} hours"
+			HOUR_FULL="digits/${A}0 digits/${B}"
 		fi
 	fi
 
-	# calculate the minute audio
-	MINUTE=$($DATE_CMD +%0M | sed -e s/'^0//')
-	if (( ${MINUTE} < 20 )); then
-		MINUTE_FULL="digits/${MINUTE} minutes"
+	# add the minute audio
+	if (( ${MINUTE} == 0 )); then
+		MINUTE_FULL="digits/hundred"
+	elif (( ${MINUTE} < 10 )); then
+		MINUTE_FULL="digits/oh digits/${MINUTE}"
 	else
 		A=$(( ${MINUTE} / 10 ))
 		B=$(( ${MINUTE} % 10 ))
-		if (( $B == 0 )); then
-			MINUTE_FULL="digits/${A}0 minutes"
+		if (( ${MINUTE} < 20 )); then
+			MINUTE_FULL="digits/${MINUTE}"
 		else
-			MINUTE_FULL="digits/${A}0 digits/${B} minutes"
+			MINUTE_FULL="digits/${A}0 digits/${B}"
 		fi
 	fi
 
-	# timezone with letters prefix
-	TIMEZONE=$($DATE_CMD +%Z | tr '[A-Z]' '[a-z]' | sed 's/./letters\/& /g')
+	# add the timezone with letters prefix
+	TIMEZONE=$(eval $DATE_CMD +%Z | tr '[A-Z]' '[a-z]' | sed 's/./letters\/& /g')
 
 	echo "rpt/thetimeis ${HOUR_FULL} ${MINUTE_FULL} ${TIMEZONE}"
 }
@@ -149,7 +162,9 @@ while getopts "n:w:d:" opt; do
 	case ${opt} in
 		n)	NODE="${OPTARG}" ;;
 		w)	WHAT="${OPTARG}" ;;
-		d)	DATE_CMD+=" --date=${OPTARG}" ;;
+		d)	DATE_ARG="-d \"${OPTARG}\""
+			DATE_CMD+=" $DATE_ARG"
+			;;
 		*)	usage ;;
 	esac
 done
