@@ -1,3 +1,10 @@
+asl3 (3.5.0-1) stable; urgency=medium
+
+  * Fix asl-node-lookup TXT [remotebase] queries (#100)
+  * Spoken time doesn't make sense (#101)
+
+ -- Allan Nathanson <wa3wco@arrl.net>  Sat, 21 Sep 2024 09:18:42 -0400
+
 asl3 (3.4.0-1) stable; urgency=medium
 
   * Add PolicyKit rules and helper scripts for asterisk
