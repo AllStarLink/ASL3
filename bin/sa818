@@ -88,21 +88,30 @@ class SA818:
 
     for _port in ports:
       try:
+        # Try to open the serial port
         self.serial = serial.Serial(port=_port, baudrate=baud,
                                     parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE,
                                     bytesize=serial.EIGHTBITS,
                                     timeout=self.READ_TIMEOUT)
         logger.debug(self.serial)
-        break
+
+        # Send initialization command and check the reply
+        self.send(self.INIT)
+        reply = self.readline()
+        if reply == "+DMOCONNECT:0":
+          # if expected response, proceed
+          break
+        else:
+          # if unexpected response, try another port
+          logger.debug("Port %s not SA818: %s", _port, reply)
+          self.serial.close()
+          self.serial = None
+
       except serial.SerialException as err:
-        logger.debug(err)
+        logger.debug("Port %s not available: %s", _port, err)
+        self.serial = None
 
     if not isinstance(self.serial, serial.Serial):
-      raise IOError('Error openning the serial port')
-
-    self.send(self.INIT)
-    reply = self.readline()
-    if reply != "+DMOCONNECT:0":
       raise SystemError('Connection error') from None
 
   def close(self):
@@ -143,51 +152,48 @@ class SA818:
     logger.info('Firmware %s, version: %s', version[1], '_'.join(version[2:]))
     return version
 
-  def set_radio(self, opts):
-    tone = opts.ctcss if opts.ctcss else opts.dcs
+  def set_radio(self, frequency, offset, bw, squelch, ctcss, dcs, tail):
+    tone = ctcss if ctcss else dcs
     if tone:                # 0000 = No ctcss or dcs tone
       tx_tone, rx_tone = tone
     else:
       tx_tone, rx_tone = ['0000', '0000']
 
-    if opts.offset == 0.0:
-      tx_freq = rx_freq = f"{opts.frequency:.4f}"
+    if offset == 0.0:
+      tx_freq = rx_freq = f"{frequency:.4f}"
     else:
-      rx_freq = f"{opts.frequency:.4f}"
-      tx_freq = f"{opts.frequency + opts.offset:.4f}"
+      rx_freq = f"{frequency:.4f}"
+      tx_freq = f"{frequency + offset:.4f}"
 
-    cmd = f"{self.SETGRP}={opts.bw},{tx_freq},{rx_freq},{tx_tone},{opts.squelch},{rx_tone}"
+    cmd = f"{self.SETGRP}={bw},{tx_freq},{rx_freq},{tx_tone},{squelch},{rx_tone}"
     self.send(cmd)
     time.sleep(1)
     response = self.readline()
     if response != '+DMOSETGROUP:0':
       logger.error('SA818 programming error')
     else:
-      bw_label = ['Narrow', 'Wide'][opts.bw]
-      if opts.ctcss:
+      bw_label = ['Narrow', 'Wide'][bw]
+      if ctcss:
         msg = "%s, BW: %s, Frequency (RX: %s / TX: %s), CTCSS (TX: %s / RX: %s), squelch: %s, OK"
         logger.info(msg, response, bw_label, rx_freq, tx_freq,
-                    CTCSS[int(tx_tone)], CTCSS[int(rx_tone)], opts.squelch)
-      elif opts.dcs:
+                    CTCSS[int(tx_tone)], CTCSS[int(rx_tone)], squelch)
+      elif dcs:
         msg = "%s, BW: %s Frequency (RX: %s / TX: %s), DCD (TX: %s / RX: %s), squelch: %s, OK"
         logger.info(msg, response, bw_label, rx_freq, tx_freq,
-                    tx_tone, rx_tone, opts.squelch)
+                    tx_tone, rx_tone, squelch)
       else:
         msg = "%s, BW: %s, RX frequency: %s, TX frequency: %s, squelch: %s, OK"
-        logger.info(msg, response, bw_label, rx_freq, tx_freq, opts.squelch)
+        logger.info(msg, response, bw_label, rx_freq, tx_freq, squelch)
 
-    if opts.tail is not None and opts.ctcss is not None:
-      self.tail(opts)
-    elif opts.tail is not None:
+    if tail is not None and ctcss is not None:
+      self.tail(tail)
+    elif tail is not None:
       logger.warning('Ignoring "--tail" specified without ctcss')
 
-  def set_filter(self, opts):
-    for key in ("emphasis", "highpass", "lowpass"):
-      if getattr(opts, key) is None:
-        setattr(opts, key, 1)
+  def set_filter(self, emphasis, highpass, lowpass):
     _rx = {0: 'enabled', 1: 'disabled'}
     # filters are pre-emphasis, high-pass, low-pass
-    cmd = f"{self.FILTER}={opts.emphasis},{opts.highpass},{opts.lowpass}"
+    cmd = f"{self.FILTER}={emphasis},{highpass},{lowpass}"
     self.send(cmd)
     time.sleep(1)
     response = self.readline()
@@ -195,28 +201,28 @@ class SA818:
       logger.error('SA818 set filter error')
     else:
       logger.info("%s filters [Pre/De]emphasis: %s, high-pass: %s, low-pass: %s",
-                  response, _rx[opts.emphasis], _rx[opts.highpass], _rx[opts.lowpass])
+                  response, _rx[emphasis], _rx[highpass], _rx[lowpass])
 
-  def set_volume(self, opts):
-    cmd = f"{self.VOLUME}={opts.level:d}"
+  def set_volume(self, level):
+    cmd = f"{self.VOLUME}={level:d}"
     self.send(cmd)
     time.sleep(1)
     response = self.readline()
     if response != "+DMOSETVOLUME:0":
       logger.error('SA818 set volume error')
     else:
-      logger.info("%s Volume level: %d, OK", response, opts.level)
+      logger.info("%s Volume level: %d, OK", response, level)
 
-  def tail(self, opts):
+  def tail(self, tail):
     _oc = {True: "open", False: "close"}
-    cmd = f"{self.TAIL}={int(opts.tail)}"
+    cmd = f"{self.TAIL}={int(tail)}"
     self.send(cmd)
     time.sleep(1)
     response = self.readline()
     if response != "+DMOSETTAIL:0":
       logger.error('SA818 set filter error')
     else:
-      logger.info("%s tail: %s", response, _oc[opts.tail])
+      logger.info("%s tail: %s", response, _oc[tail])
 
 
 def type_frequency(parg):
@@ -431,7 +437,15 @@ def main():
   if opts.func == 'version':
     radio.version()
   elif opts.func == 'radio':
-    radio.set_radio(opts)
+    radio.set_radio(
+      opts.frequency,
+      opts.offset,
+      opts.bw,
+      opts.squelch,
+      opts.ctcss,
+      opts.dcs,
+      opts.tail
+    )
   elif opts.func == 'filters':
     for key in ('emphasis', 'highpass', 'lowpass'):
       if getattr(opts, key) is not None:
@@ -439,9 +453,9 @@ def main():
     else:
       logger.error('filters need at least one argument')
       raise SystemExit('Argument error') from None
-    radio.set_filter(opts)
+    radio.set_filter(opts.emphasis, opts.highpass, opts.lowpass)
   elif opts.func == 'volume':
-    radio.set_volume(opts)
+    radio.set_volume(opts.level)
 
 
 if __name__ == "__main__":
