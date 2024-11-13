@@ -1,3 +1,9 @@
+asl3 (3.6.0-1) stable; urgency=medium
+
+  * sa818: sync w/latest updates + improved port selection (#109)
+
+ -- Allan Nathanson <wa3wco@arrl.net>  Wed, 13 Nov 2024 14:03:57 -0500
+
 asl3 (3.5.0-1) stable; urgency=medium
 
   * Fix asl-node-lookup TXT [remotebase] queries (#100)
