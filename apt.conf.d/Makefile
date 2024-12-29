@@ -1,4 +1,4 @@
-sysconfdir ?= /etc/apt.conf.d/
+sysconfdir ?= /etc/apt/apt.conf.d/
 
 CONF_FILES = $(filter-out Makefile tmp , $(wildcard *))
 CONF_INSTALLABLES = $(patsubst %, $(DESTDIR)$(sysconfdir)/%, $(CONF_FILES))
