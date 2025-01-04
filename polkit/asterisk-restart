@@ -1,2 +1,3 @@
 #!/usr/bin/bash
-exec systemctl restart asterisk
+/usr/sbin/asterisk -rx 'core restart now'
+
