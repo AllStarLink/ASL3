@@ -68,6 +68,8 @@ function debian_12(){
 		echo ""
 		echo " This system requires a reboot"
 		echo ""
+		wall "asl-kernel-manager needs to reboot the system in 60 seconds"
+		shutdown -r 
 		exit 0
 
 	else
