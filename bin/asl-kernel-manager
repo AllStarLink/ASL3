@@ -49,7 +49,7 @@ function debian_12(){
 	echo " Kernel Headers Package: ${KERN_META_PKG_HEADS}"
 	echo ""
 
-	# Remedate if needing a backport
+	# Remediate if needing a backport
 	if [ ${NEEDS_BACKPORTS} -eq 1 ]; then
 
 		# Check to see if Debian 12 is already remediated
