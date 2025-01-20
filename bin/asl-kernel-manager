@@ -11,8 +11,15 @@ fi
 
 DEBIAN_MAJ_VERSION=$(awk -F '\\.' '{print $1}' /etc/debian_version)
 
+#
+# Do Debian 12 fixes
+# 
 function debian_12(){
+
+	# Is this a Pi?
 	is_rpi=$(grep Raspberry /proc/cpuinfo | wc -l)
+
+	# Determine the linux-image and linux-headers
 	if [ ${is_rpi} -gt 0 ]; then
 		KERN_META_PKG=linux-image-rpi-v8
 		NEEDS_BACKPORTS=0
@@ -32,9 +39,9 @@ function debian_12(){
 			KERN_META_PKG=$(echo ${KERN_META_PKG} | sed 's/image/image-cloud/g')
 		fi
 	fi
-	
 	KERN_META_PKG_HEADS=$(echo ${KERN_META_PKG} | sed 's/image/headers/g')
 
+	# Pretty-print
 	echo ""
 	echo "         Debian Version: ${1}"
  	echo "           Architecture: $(uname -m)"
@@ -42,14 +49,27 @@ function debian_12(){
 	echo " Kernel Headers Package: ${KERN_META_PKG_HEADS}"
 	echo ""
 
+	# Remedate if needing a backport
 	if [ ${NEEDS_BACKPORTS} -eq 1 ]; then
+
+		# Check to see if Debian 12 is already remediated
+		if [ -f /etc/asl-kernel-manager/d12-6.1.0-broken ]; then
+			echo ""
+			echo "Task d12-6.1.0-broken already completed; no action"
+			echo ""
+			exit 0
+		fi
+
+		# Enable bookworm-backports
 		echo " Enabling bookworm-backports for this system"
 		remove_marked_kernels
 		enable_bookworm_backports
+		set_semaphore
 		echo ""
 		echo " This system requires a reboot"
 		echo ""
 		exit 0
+
 	else
 		echo " Not enabling backports for this system"
 		echo ""
@@ -79,6 +99,19 @@ function remove_marked_kernels() {
 	fi
 }
 
+function set_d12_610_semaphore() {
+	if [ ! -d /etc/asl-kernel-manager ]; then
+			mkdir /etc/asl-kernel-manager
+	fi
+	chmod 700 /etc/asl-kernel-manager
+	
+	echo $(date +%s) > /etc/asl-kernel-manager/d12-6.1.0-broken
+	echo $(date --rfc-3339=seconds) >> /etc/asl-kernel-manager/d12-6.1.0-broken
+}
+
+#
+# What Debian version are we on?
+#
 case ${DEBIAN_MAJ_VERSION} in
 	12)
 		debian_12 ${DEBIAN_MAJ_VERSION}
