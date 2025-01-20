@@ -1,5 +1,5 @@
-#!/bin/sh -e
-# postinst script for allmon3
+#!/bin/sh
+# postinst script for ASL3
 #
 # see: dh_installdeb(1)
 
