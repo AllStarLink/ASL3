@@ -4,8 +4,6 @@
 # for ASL3-related systems. It is both platform dependent (Pi vs. not Pi)
 # and Debian release dependent (12, 13, etc.)
 
-set -e
-
 if [ ${UID} != 0 ]; then
 	echo "$0 only runs as root"
 	exit 1
