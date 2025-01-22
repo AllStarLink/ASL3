@@ -64,7 +64,7 @@ function debian_12(){
 		echo " Enabling bookworm-backports for this system"
 		remove_marked_kernels
 		enable_bookworm_backports
-		set_semaphore
+		set_d12_610_semaphore
 		echo ""
 		echo " This system requires a reboot"
 		echo ""
@@ -88,9 +88,10 @@ function enable_bookworm_backports() {
 deb http://deb.debian.org/debian bookworm-backports main contrib non-free non-free-firmware
 EOF
 
+	APT_TARGET=bookworm-backports
 	DEBIAN_FRONTEND=noninteractive apt update
 	DEBIAN_FRONTEND=noninteractive \
-		apt upgrade -y -t bookworm-backports $KERN_META_PKG $KERN_MEGA_PKG_HEADS
+		apt upgrade -y $KERN_META_PKG/$APT_TARGET $KERN_META_PKG_HEADS/$APT_TARGET
 
 }
 
