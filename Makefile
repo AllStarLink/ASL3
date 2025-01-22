@@ -3,12 +3,13 @@
 #
 SRCNAME = ASL3
 PKGNAME = asl3
-RELVER = 3.6.1
+RELVER = 3.6.2
 DEBVER = 1
 RELPLAT ?= deb$(shell lsb_release -rs 2> /dev/null)
 
 BUILDABLES = \
 	bin \
+	etc \
 	apt.conf.d \
 	keys \
 	polkit \
