@@ -18,8 +18,13 @@
 
 set -e
 
+function do_configure() {
+	/etc/kernel/postinst.d/asl $(uname -r)
+}
+
 case "$1" in
     configure)
+		do_configure
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
