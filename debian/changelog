@@ -1,3 +1,12 @@
+asl3 (3.6.1-1) stable; urgency=medium
+
+  * Set the default action of an dpkg to accept old files (#115)
+  * Change restart scripts to use internal core reload (#117)
+  * Fix dependency on python3-serial (#118)
+  * Deal with Debian 6.1.0-{29,30} kernel problems (#119)
+
+ -- Jason McCormick <jason@mfamily.org>  Wed, 22 Jan 2025 10:33:56 -0500
+
 asl3 (3.6.0-1) stable; urgency=medium
 
   * sa818: sync w/latest updates + improved port selection (#109)
