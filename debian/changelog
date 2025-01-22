@@ -1,8 +1,8 @@
-asl3 (3.6.3-2) stable; urgency=medium
+asl3 (3.6.3-3) stable; urgency=medium
 
   * Move code from #119 to /etc/kernel/postinst.d
 
- -- Jason McCormick <jason@mfamily.org>  Wed, 22 Jan 2025 17:54:52 -0500
+ -- Jason McCormick <jason@mfamily.org>  Wed, 22 Jan 2025 18:30:02 -0500
 
 asl3 (3.6.1-1) stable; urgency=medium
 
