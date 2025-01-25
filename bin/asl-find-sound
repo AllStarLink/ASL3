@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 #
-# Copyright 2024 AllStarLink Inc.
+# Copyright 2024,2025 AllStarLink Inc.
 #
 # This program is free software: you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as published
@@ -12,6 +12,7 @@
 # FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 # See https://www.gnu.org/licenses/gpl-3.0.txt
 
+EXTRA_MATCHES=$(sed -n 's/^usb_devices[[:space:]]*=[[:space:]]*\([^[:space:];]*\).*/\1/p' /etc/asterisk/res_usbradio.conf 2>/dev/null)
 USBROOT=/sys/bus/usb/devices
 
 ls $USBROOT | while read DEV 
@@ -22,40 +23,49 @@ do
 	case "$IDVEND" in
 	    "0d8c" )								# C108_VENDOR_ID
 		IDPROD=`cat $USBDEV/idProduct	2>/dev/null`
-		if   [ $((16#$IDPROD & 16#fffc)) -eq $((16#000c)) ]; then	# C108_PRODUCT_ID
+		if   [[ $((16#$IDPROD & 16#fffc)) -eq $((16#000c)) ]]; then	# C108_PRODUCT_ID
 			:
-		elif [ $((16#$IDPROD          )) -eq $((16#0012)) ]; then	# C108B_PRODUCT_ID
+		elif [[ $((16#$IDPROD          )) -eq $((16#0012)) ]]; then	# C108B_PRODUCT_ID
 			:
-		elif [ $((16#$IDPROD          )) -eq $((16#013c)) ]; then	# C108AH_PRODUCT_ID
+		elif [[ $((16#$IDPROD          )) -eq $((16#013c)) ]]; then	# C108AH_PRODUCT_ID
 			:
-		elif [ $((16#$IDPROD          )) -eq $((16#013a)) ]; then	# C119A_PRODUCT_ID
+		elif [[ $((16#$IDPROD          )) -eq $((16#013a)) ]]; then	# C119A_PRODUCT_ID
 			:
-		elif [ $((16#$IDPROD          )) -eq $((16#0013)) ]; then	# C119B_PRODUCT_ID
+		elif [[ $((16#$IDPROD          )) -eq $((16#0013)) ]]; then	# C119B_PRODUCT_ID
 			:
-		elif [ $((16#$IDPROD & 16#ff00)) -eq $((16#6a00)) ]; then	# N1KDO_PRODUCT_ID
+		elif [[ $((16#$IDPROD & 16#ff00)) -eq $((16#6a00)) ]]; then	# N1KDO_PRODUCT_ID
 			:
-		elif [ $((16#$IDPROD          )) -eq $((16#0008)) ]; then	# C119_PRODUCT_ID
+		elif [[ $((16#$IDPROD          )) -eq $((16#0008)) ]]; then	# C119_PRODUCT_ID
+			:
+		elif [[ ,${EXTRA_MATCHES}, = *,${IDVEND}:${IDPROD},* ]]; then
 			:
 		else
 			continue
 		fi
-
-		MANF=`cat $USBDEV/manufacturer	2>/dev/null`
-		if [ -n "$MANF" ]; then
-			PROD="$MANF"
-		else
-			PROD=`cat $USBDEV/product 2>/dev/null`
-		fi
 		;;
 	    * )
-		continue
+		if [[ ,${EXTRA_MATCHES} != *,${IDVEND}:* ]]; then
+			continue
+		fi
+
+		IDPROD=`cat $USBDEV/idProduct	2>/dev/null`
+		if [[ ,${EXTRA_MATCHES}, != *,${IDVEND}:${IDPROD},* ]]; then
+			continue
+		fi
 		;;
 	esac
+
+	MANF=`cat $USBDEV/manufacturer	2>/dev/null`
+	if [[ -n "$MANF" ]]; then
+		PROD="$MANF"
+	else
+		PROD=`cat $USBDEV/product 2>/dev/null`
+	fi
 
 	for SUBDEV in `(cd $USBROOT; ls -d ${DEV}* )`
 	do
 		USBSUBDEV="$USBDEV/$SUBDEV"
-		if [ -d $USBSUBDEV/sound ]; then
+		if [[ -d $USBSUBDEV/sound ]]; then
 			CHANUSB=$SUBDEV
 			printf "%s\t-->\t%s:%s %s\n" $CHANUSB $IDVEND $IDPROD "$PROD"
 		fi
