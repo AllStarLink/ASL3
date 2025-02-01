@@ -1,0 +1,22 @@
+#!/usr/bin/bash
+set -e
+
+while fuser /var/lib/dpkg/lock >/dev/null 2>&1; do
+    echo "Waiting for dpkg lock..."
+    sleep 5
+done
+
+if ! `grep -E "^Model" /proc/cpuinfo | grep -q "Raspberry Pi"`; then
+	# undo asl3-deb12-kernel28-fix.sh
+	apt-mark unhold linux-image-amd64 \
+		linux-headers-amd64 \
+		linux-image-6.1.0-28-amd64 \
+		linux-headers-6.1.0-28-amd64
+else
+	# undo asl3-pi12-kernel62-fix.sh
+	apt-mark unhold linux-image-rpi-v8 \
+		linux-headers-rpi-2712 \
+		linux-headers-rpi-v8 \
+		linux-image-rpi-2712
+fi
+

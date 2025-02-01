@@ -1,0 +1,12 @@
+[Unit]
+Description=ASL3 OneBoot Task
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+ExecStart=/usr/bin/asl3-boot-oneshot
+
+[Install]
+WantedBy=multi-user.target
