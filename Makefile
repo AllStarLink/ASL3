@@ -8,8 +8,9 @@ DEBVER = 3
 RELPLAT ?= deb$(shell lsb_release -rs 2> /dev/null)
 
 BUILDABLES = \
-	bin \
 	apt.conf.d \
+	bin \
+	etc \
 	keys \
 	polkit \
 	share
