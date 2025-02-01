@@ -1,8 +1,9 @@
-sysconfdir ?= /etc/kernel/postinst.d
+sysconfdir ?= /etc
 
 all: \
-	kernel_postinst.d_asl
+	asl3-snd-usb-audio.conf
+	
 
 install:	all
-	install -D -m 0755 kernel_postinst.d_asl $(DESTDIR)$(sysconfdir)/asl
+	install -D -m 0644 asl3-snd-usb-audio.conf $(DESTDIR)$(sysconfdir)/modprobe.d/asl3-snd-usb-audio.conf
 
