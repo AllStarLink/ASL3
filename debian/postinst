@@ -18,10 +18,6 @@
 
 set -e
 
-function do_configure() {
-	
-}
-
 case "$1" in
     configure)
     ;;

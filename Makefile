@@ -4,7 +4,7 @@
 SRCNAME = ASL3
 PKGNAME = asl3
 RELVER = 3.7.0
-DEBVER = 4
+DEBVER = 10
 RELPLAT ?= deb$(shell lsb_release -rs 2> /dev/null)
 
 BUILDABLES = \
@@ -35,7 +35,7 @@ $(DESTDIR)$(docdir)/%: %
 verset:
 	perl -pi -e 's/\@\@HEAD-DEVELOP\@\@/$(RELVER)/g' `grep -rl @@HEAD-DEVELOP@@ bin/`
 
-deb:	debclean verset debprep
+deb:	debclean debprep
 	debchange --distribution stable --package $(PKGNAME) \
 		--newversion $(EPOCHVER)$(RELVER)-$(DEBVER).$(RELPLAT) \
 		"Autobuild of $(EPOCHVER)$(RELVER)-$(DEBVER) for $(RELPLAT)"

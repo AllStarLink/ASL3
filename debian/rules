@@ -5,3 +5,4 @@
 
 override_dh_installsystemd:
 	dh_installsystemd --name=asl-telemetry asl-telemetry.timer
+	dh_installsystemd --name=asl3-boot-oneshot --no-restart-after-upgrade --no-start
