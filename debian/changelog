@@ -1,3 +1,9 @@
+asl3 (3.7.1-1) stable; urgency=medium
+
+  * Set lowlatency=1 for RPi5
+
+ -- Jason McCormick <jason@mfamily.org>  Mon, 03 Feb 2025 19:24:52 -0500
+
 asl3 (3.7.0-1) stable; urgency=medium
 
   * Remove kernel manager script introduced in #119
