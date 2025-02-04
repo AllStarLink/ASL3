@@ -18,8 +18,17 @@
 
 set -e
 
+function do_configure() {
+	IS_PI5=$(egrep -E '^Model' /proc/cpuinfo | grep "Pi 5" | wc -l)
+	if [ "${IS_PI5}" == "1" ]; then
+		echo "options snd_usb_audio lowlatency=1" > \
+			/etc/modprobe.d/asl3-snd-usb-audio.conf
+	fi
+}
+
 case "$1" in
     configure)
+		do_configure
     ;;
     abort-upgrade|abort-remove|abort-deconfigure)
     ;;
