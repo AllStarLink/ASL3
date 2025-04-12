@@ -6,7 +6,7 @@
 # Control the path so we control the scripts that are run
 export PATH="/usr/bin:/usr/sbin:/sbin:/bin"
 
-if [ ${USER} != "root" ]; then
+if [ ${EUID} -ne 0 ]; then
 	printf "This must be run as root\n"
 fi
 

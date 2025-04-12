@@ -1,6 +1,6 @@
 % asl-check-install(1) ASL3 @@HEAD-DEVELOP@@
-% Jason McCormick, Allan Nathanson
-% June 2025
+% Jason McCormick
+% April 2025
 
 # NAME
 asl-check-install - Display and potentially fix ASL3 issues
