@@ -20,3 +20,4 @@ else
 		linux-image-rpi-2712
 fi
 
+exit 0
