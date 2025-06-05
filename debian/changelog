@@ -1,3 +1,10 @@
+asl3 (3.8-1) stable; urgency=medium
+
+  * asl-check-install: Add the asl-check-install Script for Troubleshooting Help (#139)
+  * asl3-boot-oneshot: don't return an incorrectly reported failure status
+
+ -- Allan Nathanson <wa3wco@arrl.net>  Thu, 05 Jun 2025 10:15:32 -0400
+
 asl3 (3.7.1-1) stable; urgency=medium
 
   * Set lowlatency=1 for RPi5
