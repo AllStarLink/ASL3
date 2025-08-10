@@ -14,13 +14,14 @@ RUN adduser --disabled-password --gecos '' --uid $USER_ID --gid $GROUP_ID user; 
 
 # Install build dependencies
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get -y install \
-	apt-utils build-essential devscripts fakeroot debhelper git \
+	apt-utils build-essential devscripts fakeroot debhelper git lsb-release \
 	libterm-readline-gnu-perl  libterm-readline-perl-perl libdistro-info-perl \
     gh ca-certificates wget --no-install-recommends
 
 # Install build dependencies
 RUN DEBIAN_FRONTEND=noninteractive apt-get -y install \
-	pandoc --no-install-recommends
+	pandoc \
+	--no-install-recommends
 
 # Import entrypoint script
 COPY ./entrypoint.sh /entrypoint.sh
