@@ -83,7 +83,7 @@ echo "ALL_PKG_ROOT: ${ALL_PKG_ROOT}"
 echo "GH_REL: ${GH_REL}"
 
 
-D_TAG="$(echo "${GH_REPO_NAME}" | cut -d'/' -f2).${OPERATING_SYSTEMS}.${ARCH}${REPO_ENV}"
+D_TAG="$(echo "${GH_REPO_NAME}" | cut -d'/' -f2 | tr '[:upper:]' '[:lower:]').${OPERATING_SYSTEMS}.${ARCH}${REPO_ENV}"
 
 docker build -f $DIR/Dockerfile -t $D_TAG \
 	--build-arg ARCH="$ARCH" \
