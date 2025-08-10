@@ -59,7 +59,7 @@ BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
 if [ $BRANCH == "develop" ]; then
   REPO_ENV="-devel"
-elif [ $BRANCH = "testing"]; then
+elif [ $BRANCH == "testing"]; then
   REPO_ENV="-testing"
 else
   REPO_ENV=""
