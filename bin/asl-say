@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 #
-# Copyright 2024 AllStarLink Inc., Jason McCormick N8EI
+# Copyright 2024,2025 AllStarLink Inc., Jason McCormick N8EI
 #
 # This program is free software: you can redistribute it and/or
 # modify it under the terms of the GNU General Public License as published
@@ -49,6 +49,34 @@ function build_and_say(){
 	ast_rx_lp ${ASTAUD}
 	sleep 10
 	rm ${TMPAUD}
+}
+
+function get_date(){
+	DAY=$(eval $DATE_CMD +%w)
+	MONTH=$(eval $DATE_CMD +%m | sed -e 's/^0//')
+	MONTH=$((MONTH - 1))
+	DAY_OF_MONTH=$(eval $DATE_CMD +%d | sed -e 's/^0//')
+
+	# add the day-of-week audio
+	DAY_FULL="digits/day-$DAY"
+
+	# add the month audio
+	MONTH_FULL="digits/mon-$MONTH"
+
+	# add the day-of-month audio
+	if (( ${DAY_OF_MONTH} < 20 )); then
+		DAY_OF_MONTH_FULL="digits/h-${DAY_OF_MONTH}"
+	else
+		A=$(( ${DAY_OF_MONTH} / 10 ))
+		B=$(( ${DAY_OF_MONTH} % 10 ))
+		if (( $B == 0 )); then
+			DAY_OF_MONTH_FULL="digits/h-${A}0"
+		else
+			DAY_OF_MONTH_FULL="digits/${A}0 digits/h-${B}"
+		fi
+	fi
+
+	echo "digits/today is ${DAY_FULL} ${MONTH_FULL} ${DAY_OF_MONTH_FULL}"
 }
 
 function get_time(){
@@ -154,7 +182,7 @@ function get_ip6(){
 }
 
 function usage(){
-	echo "Usage: $0 -n {NODE} -w ( time | time24 | ip4 | ip6 )" 1>&2
+	echo "Usage: $0 -n {NODE} -w ( date |  time | time24 | datetime | datetime24 | ip4 | ip6 )" 1>&2
 	exit 1
 }
 
@@ -176,6 +204,9 @@ if [ -z "${NODE}" ] || [ ${NODE} -lt 1 ]; then
 fi
 
 case ${WHAT} in
+	date)		build_and_say $(get_date) ;;
+	datetime)	build_and_say $(get_date) $(get_time) ;;
+	datetime24)	build_and_say $(get_date) $(get_time24) ;;
 	time)		build_and_say $(get_time) ;;
 	time24)		build_and_say $(get_time24) ;;
 	ip | ip4) 	build_and_say $(get_ip4) ;;
