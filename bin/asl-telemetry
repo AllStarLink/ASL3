@@ -28,7 +28,6 @@ fi
 
 ASL_TELEM_ETC=/etc/asl-telemetry
 ASL_DISPLAY_DATA=N
-ASL_REG_SERVERS="34.105.111.212 162.248.92.131"
 ASL_USAGE_URL="https://repo.allstarlink.org/usage/usage"
 
 while getopts "c:dhu:" opt; do
@@ -65,53 +64,43 @@ if [ "${ASL_AST_VER}" == "Unable to" ]; then
 fi
 
 # Get the local nodes
-ASL_NODES=$(asterisk -rx 'rpt localnodes' | \
-	grep -E '^[0-9]' | tr '\n' ' ')
+ASL_NODES=$(asterisk -rx 'rpt localnodes' \
+	| grep -E '^[0-9]' | tr '\n' ' ')
 ASL_NODES_J=$(echo ${ASL_NODES} | sed s'/ /,/g')
 ASL_NODES_J="[ ${ASL_NODES_J} ]"
 
-
 # Test for ASL registration
-ASL_REG_HTTP=$(asterisk -rx 'rpt show registrations' | \
-	grep -v "HTTP registration" | grep -E '^[0-9a-fA-F]' \
-	| awk '{print $1}')
-ASL_REG_IAX=$(asterisk -rx 'iax2 show registry' | \
-	grep -v "IAX2 registration" | grep -E '^[0-9a-fA-F]' \
-	| awk '{print $1}')
-ASL_REGISTERED="N"
-for i in ${ASL_REG_SERVERS}; do
-	if [[ "$ASL_REG_HTTP" == *"$i"* ]]; then
-		ASL_REGISTERED="Y"
-	fi
-	if [[ "${ASL_REG_IAX}" == *"$i"* ]]; then
-		ASL_REGISTERED="Y"
-	fi
-done
-
-# If the node isn't reigstered to ASL
-# then stop collecting and exit.
-if [ "${ASL_REGISTERED}" == "N" ]; then
-	exit 0 # note exit as 0 to not foul up systemd
+ASL_REG_HTTP=$(asterisk -rx 'rpt show registrations' \
+	| grep -v "Not Registered" \
+	| grep "Registered" )
+ASL_REG_IAX=$(asterisk -rx 'iax2 show registry' \
+	| grep "Registered" )
+if [[ -z "${ASL_REG_HTTP}${ASL_REG_IAX}" ]]; then
+	#
+	# node not reigstered w/ASL, stop collecting and exit
+	#
+	# note: exit as 0 to not foul up systemd
+	exit 0
 fi
 
 # Get ASL registrations
-ASL_REG_HTTP=$(asterisk -rx 'rpt show registrations' | \
-    grep -v "HTTP registration" | grep -E '^[0-9a-fA-F]' \
-    | awk '{print $2}' | tr '\n' ',')
+ASL_REG_HTTP=$(asterisk -rx 'rpt show registrations' \
+	| grep -v "HTTP registration" | grep -E '^[0-9a-fA-F]' \
+	| awk '{print $2}' | tr '\n' ',')
 ASL_REG_HTTP=$(echo ${ASL_REG_HTTP} | sed 's/,$//')
 ASL_REG_HTTP="[ ${ASL_REG_HTTP} ]"
 
-ASL_REG_IAX=$(asterisk -rx 'iax2 show registry' | \
-   grep -v "IAX2 registration" | grep -E '^[0-9a-fA-F]' \
-    | awk '{print $3}' | tr '\n' ',')
+ASL_REG_IAX=$(asterisk -rx 'iax2 show registry' \
+	| grep -v "IAX2 registration" | grep -E '^[0-9a-fA-F]' \
+	| awk '{print $3}' | tr '\n' ',')
 ASL_REG_IAX=$(echo ${ASL_REG_IAX} | sed 's/,$//')
 ASL_REG_IAX="[ ${ASL_REG_IAX} ]"
 
 # Get channels
 ASL_CHANS=""
 for N in ${ASL_NODES}; do
-	CHAN=$(asterisk -rx "rpt show channels ${N}" | \
-	grep -E '^rxchannel' | awk '{print $3}' \
+	CHAN=$(asterisk -rx "rpt show channels ${N}" \
+	| grep -E '^rxchannel' | awk '{print $3}' \
 	| awk -F/ '{print $1}')
 	ASL_CHANS="${ASL_CHANS} \"$N\" : \"$CHAN\","
 done
@@ -119,10 +108,10 @@ ASL_CHANS=$(echo ${ASL_CHANS} | sed 's/,$//')
 ASL_CHANS="{ ${ASL_CHANS} }"
 
 # Get uptime
-ASL_UPTIME=$(asterisk -rx 'core show uptime seconds' | \
-	grep -E '^System' | awk '{print $3}')
-ASL_RELOAD_TIME=$(asterisk -rx 'core show uptime seconds' | \
-	grep -E '^Last' | awk '{print $3}')
+ASL_UPTIME=$(asterisk -rx 'core show uptime seconds' \
+	| grep -E '^System' | awk '{print $3}')
+ASL_RELOAD_TIME=$(asterisk -rx 'core show uptime seconds' \
+	| grep -E '^Last' | awk '{print $3}')
 
 
 # OS-level items
