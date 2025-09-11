@@ -6,14 +6,17 @@
 asl-say - Cause Asterisk to speak
 
 # SYNOPSIS
-usage: `asl-say -n NODE -w ( time | time24 | ip4 | ip6 )`
+usage: `asl-say -n NODE -w ( date |  time | time24 | datetime | datetime24 | ip4 | ip6 )`
 
 # DESCRIPTION
 `asl-say` will speak the one of the following things
 on the node specified with `-n` as directed by `-w`
 
+**date** - The current date
 **time** - The current time
 **time24** - The current time in 24-hour format
+**datetime** - The current date and time
+**datetime24** - The current date and time in 24-hour format
 **ip4** - The first IPv4 address of the system
 **ip6** - The first global-scope IPv6 of the system
 
@@ -25,5 +28,5 @@ on node 1999.
 Report bugs to https://github.com/AllStarLink/ASL3/issues
 
 # COPYRIGHT
-Copyright (C) 2024 Jason McCormick and AllStarLink
+Copyright (C) 2024,2025 Jason McCormick and AllStarLink
 under the terms of the AGPL v3.
