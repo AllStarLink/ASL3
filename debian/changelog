@@ -1,3 +1,16 @@
+asl3 (3.10-1) stable; urgency=medium
+
+  * asl-play-arn: Fixes permission problem when playing ARRL radio news (#158)
+
+asl3 (3.9-1) stable; urgency=medium
+
+  * Updates for "trixie"
+  * asl-say: allow the command to say the current date (and date+time) (#152)
+  * Add sa818(1) and sa818-menu(1) man pages (#153)
+  * asl-telemetry: add support for updated/added registraton servers (#155)
+
+ -- Allan Nathanson <wa3wco@arrl.net>  Fri, 10 Oct 2025 16:48:22 -0400
+
 asl3 (3.8-1) stable; urgency=medium
 
   * asl-check-install: Add the asl-check-install Script for Troubleshooting Help (#139)
