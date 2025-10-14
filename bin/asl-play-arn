@@ -117,7 +117,7 @@ def main():
         # play the audio
         ulaw_path_no_ext, _ = os.path.splitext(ulaw_out.name)
         astplay = [
-            "asterisk",
+            "/usr/sbin/asterisk",
             "-rx",
             "rpt playback {0:s} {1:s}".format(
                 args.node, ulaw_path_no_ext)
