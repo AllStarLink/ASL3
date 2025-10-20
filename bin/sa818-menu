@@ -91,6 +91,7 @@ do_settings_load() {
     if [ -r "${SA818_CONF}" ]; then
 	. "${SA818_CONF}"
     fi
+
     CURRENT_BAND=${CURRENT_BAND:-"VHF"}
     CURRENT_BANDWIDTH=${CURRENT_BANDWIDTH:-"Wide"}
     CURRENT_FREQ_RX=${CURRENT_FREQ_RX:-"000.0000"}
@@ -100,14 +101,23 @@ do_settings_load() {
     CURRENT_TONE=${CURRENT_TONE:-"None"}
     CURRENT_CTCSS_RX=${CURRENT_CTCSS_RX:-"None"}
     CURRENT_CTCSS_TX=${CURRENT_CTCSS_TX:-"None"}
-    CURRENT_DCS_RX=${CURRENT_DCS_RX:-""}
-    CURRENT_DCS_TX=${CURRENT_DCS_TX:-""}
+    CURRENT_DCS_RX=${CURRENT_DCS_RX:-"None"}
+    CURRENT_DCS_TX=${CURRENT_DCS_TX:-"None"}
     CURRENT_TAIL_TONE=${CURRENT_TAIL_TONE:-"Closed"}
     CURRENT_EMPHASIS=${CURRENT_EMPHASIS:-"Disabled"}
     CURRENT_FILTER_HIGH_PASS=${CURRENT_FILTER_HIGH_PASS:-"Disabled"}
     CURRENT_FILTER_LOW_PASS=${CURRENT_FILTER_LOW_PASS:-"Disabled"}
     CURRENT_PORT=${CURRENT_PORT:-""}
     CURRENT_SPEED=${CURRENT_SPEED:-""}
+
+    if [[ "$CURRENT_DCS_RX" = "" ]]; then
+	CURRENT_DCS_RX="None"
+    fi
+    if [[ "$CURRENT_DCS_TX" = "" ]]; then
+	CURRENT_DCS_TX="None"
+    fi
+
+    STORED_TONE=$CURRENT_TONE
 }
 
 do_settings_store() {
@@ -182,7 +192,7 @@ do_sa818_update_radio() {
     #                         Receive frequency
     #   --offset OFFSET       Offset in MHz, 0 for no offset [default: 0.0]
     #   --squelch SQUELCH     Squelch value (0 to 8) [default: 4]
-    #   --ctcss CTCSS         CTCSS (PL Tone) 0 for no CTCSS [default: None]
+    #   --ctcss CTCSS         CTCSS (PL Tone) "None" for no CTCSS [default: None]
     #   --dcs DCS             DCS code must be the number followed by [N normal] or [I inverse] [default: None]
     #   --tail TAIL           Close CTCSS Tail Tone (Open/Close)
     #
@@ -212,14 +222,25 @@ do_sa818_update_radio() {
 		else
 		    sa818_cmd+=("--tail"  "close")
 		fi
+	    else
+		sa818_cmd+=("--ctcss" "None,None")
 	    fi
 	    ;;
 	"DCS" )
-	    if [[ "$CURRENT_DCS_RX" != "" || "$CURRENT_DCS_TX" != "" ]]; then
+	    if [[ "$CURRENT_DCS_RX" != "None" || "$CURRENT_DCS_TX" != "None" ]]; then
 		sa818_cmd+=("--dcs" "$CURRENT_DCS_TX,$CURRENT_DCS_RX")
+	    else
+		sa818_cmd+=("--dcs" "None,None")
+	    fi
+	    ;;
+	* )
+	    if [[ "$CURRENT_TONE" != "$STORED_TONE" ]]; then
+		# ensure that any current tones are removed
+		sa818_cmd+=("--ctcss" "None,None")
 	    fi
 	    ;;
     esac
+    STORED_TONE="$CURRENT_TONE"
 
     echo ""
     echo "# ${sa818_cmd[@]}"
@@ -299,7 +320,11 @@ do_sa818_update() {
 	return 0
     fi
 
-    sa818_cmd_base=("sa818")
+    if [ -x "$(dirname $0)/sa818" ]; then
+	sa818_cmd_base=("$(dirname $0)/sa818")
+    else
+	sa818_cmd_base=("sa818")
+    fi
     if [[ -n "$ASL_DEBUG" ]]; then
 	sa818_cmd_base+=("$ASL_DEBUG")
     fi
@@ -439,27 +464,6 @@ CTCSS_TONES=(										\
 		"218.1" "225.7" "233.6" "241.8" "250.3"					\
 	    )
 
-#
-#   ctcss_index $ANSWER
-#   if [[ $? -ne 0 ]]; then
-#	echo "CTCSS tone index = $SA818_CTCSS_TONE"
-#	sleep 5
-#   fi
-#
-ctcss_index() {
-    CURRENT_CTCSS=$1
-
-    # Loop through the array
-    for i in "${!CTCSS_TONES[@]}"; do
-	if [[ "${CTCSS_TONES[$i]}" = "$CURRENT_CTCSS" ]]; then
-	    SA818_CTCSS_TONE=$(printf "%.4d" "$i")
-	    return 1
-	fi
-    done
-
-    return 0
-}
-
 do_ctcss_select() {
     echo "doing do_ctcss_select"			>>$logfile
 
@@ -518,6 +522,14 @@ do_dcs_select() {
     CURRENT_DCS=$2
 
     dcs_codes=()
+
+    if [[ "$CURRENT_DCS" = "None" ]]; then
+	ONOFF="ON"
+    else
+	ONOFF="OFF"
+    fi
+    dcs_codes+=("None" "$ONOFF")
+
     for t in "${DCS_CODES[@]}"; do
 	for x in "I" "N"; do
 	    code="$t$x"
@@ -544,7 +556,6 @@ do_dcs_select() {
 	return 0
     fi
 
-    ANSWER="${ANSWER% Hz}"
     return 1
 }
 
@@ -772,8 +783,8 @@ do_update_rx_ctcss() {
 
     if [[ $ANSWER != $CURRENT_CTCSS_RX ]]; then
 	CURRENT_CTCSS_RX=$ANSWER
-	if [[ "$ANSWER" = "None" || "$CURRENT_CTCSS_TX" = "None" ]]; then
-	    # if setting to (or from) "None", set both
+	if [[ "$ANSWER" != "None" && "$CURRENT_CTCSS_TX" = "None" ]]; then
+	    # if both were "None", set both to the new tone
 	    CURRENT_CTCSS_TX=$ANSWER
 	fi
 	SA818_UPDATED=1
@@ -792,8 +803,8 @@ do_update_tx_ctcss() {
 
     if [[ $ANSWER != $CURRENT_CTCSS_TX ]]; then
 	CURRENT_CTCSS_TX=$ANSWER
-	if [[ "$ANSWER" = "None" || "$CURRENT_CTCSS_RX" = "None" ]]; then
-	    # if setting to (or from) "None", set both
+	if [[ "$ANSWER" != "None" && "$CURRENT_CTCSS_RX" = "None" ]]; then
+	    # if both were "None", set both to the new tone
 	    CURRENT_CTCSS_RX=$ANSWER
 	fi
 	SA818_UPDATED=1
@@ -812,8 +823,8 @@ do_update_rx_dcs() {
 
     if [[ $ANSWER != $CURRENT_DCS_RX ]]; then
 	CURRENT_DCS_RX=$ANSWER
-	if [[ "$CURRENT_DCS_TX" = "" ]]; then
-	    # if changing from "", set both
+	if [[ "$ANSWER" != "None" && "$CURRENT_DCS_TX" = "None" ]]; then
+	    # if both were "None", set both to the new tone
 	    CURRENT_DCS_TX=$ANSWER
 	fi
 	SA818_UPDATED=1
@@ -832,8 +843,8 @@ do_update_tx_dcs() {
 
     if [[ $ANSWER != $CURRENT_DCS_TX ]]; then
 	CURRENT_DCS_TX=$ANSWER
-	if [[ "$CURRENT_DCS_RX" = "" ]]; then
-	    # if changing from "", set both
+	if [[ "$ANSWER" != "None" && "$CURRENT_DCS_RX" = "None" ]]; then
+	    # if both were "None", set both to the new tone
 	    CURRENT_DCS_RX=$ANSWER
 	fi
 	SA818_UPDATED=1
@@ -1008,6 +1019,15 @@ do_update_speed() {
 
 # ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
 
+do_refresh_rf_module() {
+    echo "doing do_refresh_rf_module"		>>$logfile
+
+    STORED_TONE="Force Update"
+    SA818_UPDATED=1
+}
+
+# ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
+
 do_main_menu() {
     echo "do_main_menu"				>>$logfile
 
@@ -1089,6 +1109,8 @@ do_main_menu() {
 	    ""  ""									\
 	    "P" "Serial Port                     : $DISPLAY_PORT"			\
 	    "S" "Connection Speed                : $DISPLAY_SPEED"			\
+	    ""  ""									\
+	    "R" "Refresh RF Module"							\
 	    3>&1 1>&2 2>&3)
 	RC=$?
 	if [[ $RC -ne 0 ]]; then
@@ -1140,6 +1162,8 @@ do_main_menu() {
 		;;
 	    S )	do_update_speed
 		;;
+	    R )	do_refresh_rf_module
+		;;
 	    "" )
 		;;
 	    * )	whiptail --msgbox "$CHOICE is an unrecognized selection." $MSGBOX_HEIGHT $MSGBOX_WIDTH
@@ -1154,11 +1178,12 @@ do_main_menu() {
 # ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== ===== =====
 
 usage() {
-    echo "Usage: $0 [ --apply ] [ --debug ]"
+    echo "Usage: $0 [ --conf <config-file> ] [ --apply ] [ --debug ]"
     echo ""
     echo "Options :"
-    echo "  --apply	[Re-]apply the saved configuration to SA818 (without the menu)"
-    echo "  --debug	Enable \"sa818\" debugging"
+    echo "  --conf <config-file>  \"saved\" configuration file (default /etc/sa818.conf)"
+    echo "  --apply               [Re-]apply the \"saved\" configuration to SA818 (without the menu)"
+    echo "  --debug               Enable \"sa818\" debugging"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -1166,6 +1191,15 @@ while [[ $# -gt 0 ]]; do
 	"--apply" )
 	    SA818_APPLY=1
 	    shift
+	    ;;
+
+	"--conf" )
+	    if [[ $# -lt 2 ]]; then
+		usage
+		exit 1
+	    fi
+	    SA818_CONF="$2"
+	    shift; shift
 	    ;;
 
 	"--debug" )

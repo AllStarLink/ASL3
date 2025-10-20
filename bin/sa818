@@ -44,23 +44,146 @@ logging.basicConfig(format='%(name)s: %(levelname)s: %(message)s',
 logger = logging.getLogger('SA818')
 
 
+#
+# SA818 CTCSS Tone Frequencies (0000-0038)
+#
 CTCSS = (
-  "None", "67.0", "71.9", "74.4", "77.0", "79.7", "82.5", "85.4", "88.5",
-  "91.5", "94.8", "97.4", "100.0", "103.5", "107.2", "110.9", "114.8", "118.8",
-  "123.0", "127.3", "131.8", "136.5", "141.3", "146.2", "151.4", "156.7",
-  "162.2", "167.9", "173.8", "179.9", "186.2", "192.8", "203.5", "210.7",
-  "218.1", "225.7", "233.6", "241.8", "250.3"
+  "None", "67.0", "71.9", "74.4", "77.0", "79.7", "82.5", "85.4", "88.5", "91.5",  # 0000-0009
+  "94.8", "97.4", "100.0","103.5","107.2","110.9","114.8","118.8","123.0","127.3", # 0010-0019
+  "131.8","136.5","141.3","146.2","151.4","156.7","162.2","167.9","173.8","179.9", # 0020-0029
+  "186.2","192.8","203.5","210.7","218.1","225.7","233.6","241.8","250.3"          # 0030-0038
 )
 
+#
+# SA818 CDCSS Tone Frequencies (None, 83*xxxI, 83*xxxN)
+#
 DCS_CODES = [
-  "023", "025", "026", "031", "032", "036", "043", "047", "051", "053", "054",
-  "065", "071", "072", "073", "074", "114", "115", "116", "125", "131", "132",
-  "134", "143", "152", "155", "156", "162", "165", "172", "174", "205", "223",
-  "226", "243", "244", "245", "251", "261", "263", "265", "271", "306", "311",
-  "315", "331", "343", "346", "351", "364", "365", "371", "411", "412", "413",
-  "423", "431", "432", "445", "464", "465", "466", "503", "506", "516", "532",
-  "546", "565", "606", "612", "624", "627", "631", "632", "654", "662", "664",
-  "703", "712", "723", "731", "732", "734", "743", "754"
+  "023", "025", "026", "031", "032", "043", "047", "051", "054", "065",
+  "071", "072", "073", "074", "114", "115", "116", "125", "131", "132",
+  "134", "143", "152", "155", "156", "162", "165", "172", "174", "205",
+  "223", "226", "243", "244", "245", "251", "261", "263", "265", "271",
+  "306", "311", "315", "331", "343", "346", "351", "364", "365", "371",
+  "411", "412", "413", "423", "431", "432", "445", "464", "465", "466",
+  "503", "506", "516", "532", "546", "565", "606", "612", "624", "627",
+  "631", "632", "654", "662", "664", "703", "712", "723", "731", "732",
+  "734", "743", "754",
+]
+
+#
+# DCS info:
+#
+# SA818_programming_manual.pdf
+# https://web.archive.org/web/20220331074737/http://www.onfreq.com/syntorx/dcs.html
+# https://www.ccareswa.org/system/files/library/2020-07-20_CTCSS%2BDCS-presentation_Rev1_WA7PTM.pdf
+#
+
+DCS_CODES_EXTENDED = [
+  #
+  # Extended (21*xxxI, 21*xxxN)
+  #
+                       "036", "053", "122", "145", "212", "225", "246",
+  "252", "255", "266", "274", "325", "332", "356", "446", "452", "454",
+  "455", "462", "523", "526"
+]
+
+DCS_CODES_NONSTANDARD = [
+  #
+  # Non-standard code groupings (including the "extended" codes above)
+  #
+  "000", "352",
+  "001", "476", "760",
+  "002", "522", "540",
+  "003", "100",
+  "004", "300", "334",
+  "005", "044", "400",
+  "006",
+  "007", "670",
+  "010", "033", "600",
+  "011", "401", "531", "625",
+  "012", "215", "320",
+  "013", "063", "700",
+  "014", "450", "500", "544",
+  "015", "740", "747",
+  "016", "154", "206",
+  "017", "200",
+  "020", "170", "230", "601",
+  "021", "277", "402",
+  "022", "264", "461", "613",
+  "024", "120", "260",
+  "027", "201", "242",
+  "030", "055",
+  "034", "103", "140", "410",
+  "035", "124", "403",
+  "036", "137",
+  "040", "052", "404",
+  "041", "111", "451", "514", "602",
+  "042", "160", "216", "341",
+  "045", "240", "305", "543",
+  "046", "202", "210", "421", "644",
+  "050", "167",
+  "053",
+  "061", "211", "232", "650",
+  "062", "070", "101", "407",
+  "064", "151", "440", "406",
+  "077",
+  "102", "121", "323", "604",
+  "105", "204", "247", "420", "710",
+  "106", "221", "241", "304", "424",
+  "110", "126", "302", "430",
+  "112", "250", "505", "512",
+  "113", "573",
+  "122", "535",
+  "141", "177", "541",
+  "145", "525",
+  "146", "220", "414", "422", "442", "622",
+  "166", "773",
+  "175",
+  "212", "253",
+  "214", "310", "377", "437",
+  "225", "536",
+  "246", "542", "653",
+  "252", "661",
+  "255", "425",
+  "257", "705",
+  "266", "655",
+  "272",
+  "274", "652",
+  "275",
+  "325", "550", "626",
+  "332", "433", "552",
+  "335",
+  "336", "770",
+  "337",
+  "347", "434", "776",
+  "356", "521",
+  "357", "477", "774",
+  "361", "373",
+  "367", "676",
+  "376", "617", "763",
+  "446", "467", "511", "672",
+  "452", "524", "765",
+  "454", "545", "513", "564",
+  "455", "533", "551",
+  "462", "472", "623", "725",
+  "463", "637", "775",
+  "523", "647", "726",
+  "526", "562", "645",
+  "527", "764",
+  "537", "735",
+  "547", "757",
+  "555", "571",
+  "556",
+  "576", "722",
+  "577",
+  "633", "667",
+  "646", "665",
+  "651", "677",
+  "716", "727",
+  "733",
+  "752", "755",
+  "753",
+  "767",
+  "777"
 ]
 
 BAUD_RATES = [300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200]
@@ -153,6 +276,7 @@ class SA818:
     return version
 
   def set_radio(self, frequency, offset, bw, squelch, ctcss, dcs, tail):
+    # pylint: disable=too-many-locals,too-many-positional-arguments
     tone = ctcss if ctcss else dcs
     if tone:                # 0000 = No ctcss or dcs tone
       tx_tone, rx_tone = tone
@@ -178,9 +302,11 @@ class SA818:
         logger.info(msg, response, bw_label, rx_freq, tx_freq,
                     CTCSS[int(tx_tone)], CTCSS[int(rx_tone)], squelch)
       elif dcs:
-        msg = "%s, BW: %s Frequency (RX: %s / TX: %s), DCD (TX: %s / RX: %s), squelch: %s, OK"
+        tx_tone_display = None if tx_tone == '0000' else tx_tone
+        rx_tone_display = None if rx_tone == '0000' else rx_tone
+        msg = "%s, BW: %s Frequency (RX: %s / TX: %s), DCS (TX: %s / RX: %s), squelch: %s, OK"
         logger.info(msg, response, bw_label, rx_freq, tx_freq,
-                    tx_tone, rx_tone, squelch)
+                    tx_tone_display, rx_tone_display, squelch)
       else:
         msg = "%s, BW: %s, RX frequency: %s, TX frequency: %s, squelch: %s, OK"
         logger.info(msg, response, bw_label, rx_freq, tx_freq, squelch)
@@ -248,15 +374,20 @@ def type_ctcss(parg):
     raise argparse.ArgumentError from None
 
   for code in codes:
-    try:
-      ctcss = str(float(code))
-      if ctcss not in CTCSS:
-        raise ValueError
-      ctcss = CTCSS.index(ctcss)
-      tone_codes.append(f"{ctcss:04d}")
-    except ValueError:
-      logger.error(err_msg)
-      raise argparse.ArgumentTypeError from None
+    if code.lower() == "none":
+      tone_codes.append("0000")  # No CTCSS
+    else:
+      try:
+        ctcss = str(float(code))
+        if ctcss == "0.0":
+          ctcss == CTCSS[0]
+        if ctcss not in CTCSS:
+          raise ValueError
+        ctcss = CTCSS.index(ctcss)
+        tone_codes.append(f"{ctcss:04d}")
+      except ValueError:
+        logger.error(err_msg)
+        raise argparse.ArgumentTypeError from None
 
   return tone_codes
 
@@ -272,19 +403,27 @@ def type_dcs(parg):
     raise argparse.ArgumentError from None
 
   for code in codes:
-    if code[-1] not in ('N', 'I'):
-      logger.error(err_msg)
-      raise argparse.ArgumentError from None
-
-    code, direction = code[:-1], code[-1]
-    try:
-      dcs = f"{int(code):03d}"
-      if dcs not in DCS_CODES:
+    if code.lower() == "none":
+      dcs_codes.append("0000")  # No DCS
+    else:
+      if code[-1] not in ('N', 'I'):
         logger.error(err_msg)
-        raise argparse.ArgumentError
-    except ValueError:
-      raise argparse.ArgumentTypeError from None
-    dcs_codes.append(dcs + direction)
+        raise argparse.ArgumentError from None
+
+      code, direction = code[:-1], code[-1]
+      try:
+        dcs = f"{int(code):03d}"
+        if dcs not in DCS_CODES:
+          if dcs in DCS_CODES_EXTENDED:
+            logger.info("Setting extended DCS code: %s", dcs + direction)
+          elif dcs in DCS_CODES_NONSTANDARD:
+            logger.info("Setting non-standard DCS code: %s", dcs + direction)
+          else:
+            logger.error(err_msg)
+            raise argparse.ArgumentError
+      except ValueError:
+        raise argparse.ArgumentTypeError from None
+      dcs_codes.append(dcs + direction)
 
   return dcs_codes
 
@@ -382,7 +521,7 @@ def command_parser():
                        help="Squelch value (0 to 8) [default: %(default)s]")
   code_group = p_radio.add_mutually_exclusive_group()
   code_group.add_argument("--ctcss", default=None, type=type_ctcss,
-                          help="CTCSS (PL Tone) 0 for no CTCSS [default: %(default)s]")
+                          help="CTCSS (PL Tone) \"None\" for no CTCSS [default: %(default)s]")
   code_group.add_argument("--dcs", default=None, type=type_dcs,
                           help=("DCS code must be the number followed by [N normal] or "
                                 "[I inverse]  [default: %(default)s]"))
