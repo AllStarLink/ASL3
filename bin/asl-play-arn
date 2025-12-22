@@ -4,6 +4,7 @@ import argparse
 import logging
 import logging.handlers
 import os
+import pwd
 import re
 import requests
 import subprocess
@@ -40,6 +41,16 @@ def main():
         log.setLevel(logging.DEBUG)
     else:
         log.setLevel(logging.INFO)
+
+    # Ensure this script is running as 'asterisk' or root.
+    try:
+        asterisk_uid = pwd.getpwnam("asterisk").pw_uid
+    except KeyError:
+        sys.exit("Required user 'asterisk' does not exist on this system")
+
+    euid = os.geteuid()
+    if euid not in (0, asterisk_uid):
+        sys.exit("This script must be run as 'asterisk' (or 'root')")
 
     # validate the node number is 4-6 digits
     noder = r"^[0-9]{4,6}$"
@@ -145,5 +156,10 @@ def main():
 
 
 if __name__ == "__main__":
+    try:
     main()
     sys.exit()
+
+    except KeyboardInterrupt:
+        sys.exit("\nInterrupted by user")
+
