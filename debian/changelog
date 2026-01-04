@@ -1,3 +1,10 @@
+asl3 (3.12-1) stable; urgency=medium
+
+  * sa818, sa818-menu: allow CTCSS split (on tone "on", one tone "off") (#162)
+  * asl-play-arn: check that script is exec'd as 'asterisk' (or 'root') (#167)
+
+ -- Allan Nathanson <wa3wco@arrl.net>  Sun, 04 Jan 2026 13:19:18 -0500
+
 asl3 (3.11-1) stable; urgency=medium
 
   * asl-play-arn: use full path to overcome PATH indeterminacy (#160)
