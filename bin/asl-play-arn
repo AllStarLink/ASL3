@@ -157,8 +157,8 @@ def main():
 
 if __name__ == "__main__":
     try:
-    main()
-    sys.exit()
+        main()
+        sys.exit()
 
     except KeyboardInterrupt:
         sys.exit("\nInterrupted by user")
