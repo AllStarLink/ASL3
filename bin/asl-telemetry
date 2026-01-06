@@ -91,8 +91,8 @@ ASL_REG_HTTP=$(echo ${ASL_REG_HTTP} | sed 's/,$//')
 ASL_REG_HTTP="[ ${ASL_REG_HTTP} ]"
 
 ASL_REG_IAX=$(asterisk -rx 'iax2 show registry' \
-	| grep -v "IAX2 registration" | grep -E '^[0-9a-fA-F]' \
-	| awk '{print $3}' | tr '\n' ',')
+	| grep -v "IAX2 registration" | grep -E '^[0-9\.\:]+\s' \
+	| awk '{print $3}' | tr '\n' ',' | grep -E '^[0-9]+$')
 ASL_REG_IAX=$(echo ${ASL_REG_IAX} | sed 's/,$//')
 ASL_REG_IAX="[ ${ASL_REG_IAX} ]"
 
