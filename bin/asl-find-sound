@@ -62,12 +62,17 @@ do
 		PROD=`cat $USBDEV/product 2>/dev/null`
 	fi
 
+	SERIAL=`cat $USBDEV/serial	2>/dev/null`
+	if [[ -n "$SERIAL" ]]; then
+		SERIAL=" (S/N: ${SERIAL})"
+	fi
+
 	for SUBDEV in `(cd $USBROOT; ls -d ${DEV}* )`
 	do
 		USBSUBDEV="$USBDEV/$SUBDEV"
 		if [[ -d $USBSUBDEV/sound ]]; then
 			CHANUSB=$SUBDEV
-			printf "%s\t-->\t%s:%s %s\n" $CHANUSB $IDVEND $IDPROD "$PROD"
+			printf "%s\t-->\t%s:%s %s%s\n" $CHANUSB $IDVEND $IDPROD "$PROD" "$SERIAL"
 		fi
 	done
 done
