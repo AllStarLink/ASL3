@@ -1,0 +1,426 @@
+#!/usr/bin/python3
+
+import re
+import requests
+import subprocess
+import shlex
+import sys
+import socket
+import ipaddress
+from datetime import datetime, timedelta, UTC
+
+_registration_re = re.compile(r'^(\d+):([^@]+)@([a-zA-Z0-9\.]+)$')
+_reghost_re = re.compile(r'^register\.allstarlink\.org$')
+
+def print_element_msg(msg, msg_type):
+    print(f"{msg_type:>10}: {msg}")
+
+def print_error(msg):
+    print_element_msg(msg,"Error")
+
+def print_warning(msg):
+    print_element_msg(msg,"Warning")
+
+def print_info(msg):
+    print_element_msg(msg,"Info")
+
+def print_ok(msg):
+    print_element_msg(msg,"OK")
+
+def reverse_dns(ip):
+    """
+    Perform a reverse DNS lookup for IPv4 or IPv6.
+    Returns the hostname string, or None if lookup fails.
+    """
+    try:
+        # Validate IP (works for both IPv4 and IPv6)
+        ipaddress.ip_address(ip)
+    except ValueError:
+        return None
+
+    try:
+        hostname, aliaslist, ipaddrlist = socket.gethostbyaddr(ip)
+        return hostname
+    except socket.herror:
+        return None
+
+
+def parse_registration_string(s):
+    """
+    Parse 'node:secret@host' into (node, secret, host).
+    Return None if the string does not strictly match.
+    """
+    m = _registration_re.match(s)
+    if not m:
+        return None
+    node, secret, host = m.groups()
+    return node, secret, host
+
+
+def extract_registration_values(filename, regtype):
+    """ extract the register => lines from a config file """
+    pattern = re.compile(r'^register\s*=>\s*(.*)$')
+
+    results = []
+    with open(filename, 'r') as f:
+        for line in f:
+            m = pattern.match(line)
+            if m:
+                value = re.sub(r'\s+', '', m.group(1))  # remove all whitespace
+                regtuple = parse_registration_string(value)
+                regtuple = regtuple + (regtype,)
+                if regtuple is None:
+                    print_error(f"Invalid registration >> {value} << in {filename}")
+                    continue
+                results.append(regtuple)
+    return results
+
+
+def get_registrations():
+    """ obtain all the configurations from a registration file """
+    conf_files = [
+        ("/etc/asterisk/iax.conf","iax"),
+        ("/etc/asterisk/rpt_http_registrations.conf","http")
+    ]
+    config_registers = []
+    config_has_one_reg = False
+
+    for filename, regtype in conf_files:
+
+        r = extract_registration_values(filename, regtype)
+
+        if len(r) < 1:
+            print_info(f"{filename} contains no registration lines. This might be okay if other files have them.")
+            continue
+
+        config_registers.extend(r)
+        config_has_one_reg = True
+
+    if config_has_one_reg is False:
+        return None
+    return config_registers
+
+def check_node_formedness(node,reghost):
+    """ validate node and reghost """
+    n_errors = 0
+    n_warnings = 0
+
+    try:
+        node_int = int(node)
+        if node_int < 2000 or node_int > 999989:
+            print_error(f"Node {node} is outside the numeric range 2000-999989")
+            n_errors += 1
+
+    except Exception as e:
+        print_error(f"Registration has \"node\" {node} which is not a number")
+        n_errors += 1
+
+    m = _reghost_re.match(reghost)
+    if m is None:
+        print_error(f"Registration has a reghost of {reghost} which is not 'register.allstarlink.org'")
+        n_errors += 1
+
+    return n_errors, n_warnings
+
+def find_iax_registration(node):
+    """
+    Runs 'asterisk -rx "iax2 show registry"' and returns a tuple:
+        (Host, Perceived, State)
+    for the given username, or None if not found.
+    """
+
+    cmd = "asterisk -rx 'iax2 show registry'"
+    try:
+        output = subprocess.check_output(
+            shlex.split(cmd),
+            text=True,
+            stderr=subprocess.STDOUT
+        )
+    except subprocess.CalledProcessError:
+        return None
+
+    lines = output.strip().splitlines()
+    if len(lines) < 3:
+        return None
+
+    # Skip header line
+    data_lines = lines[1:]
+
+    for line in data_lines:
+        # Skip summary line like "1 IAX2 registrations."
+        if "registrations" in line:
+            continue
+
+        # Columns are aligned, so splitting on whitespace works reliably
+        parts = line.split()
+        if len(parts) < 6:
+            continue
+
+        host      = parts[0]
+        dnsmgr    = parts[1]
+        user      = parts[2]
+        perceived = parts[3]
+        refresh   = parts[4]
+        state     = " ".join(parts[5:])  # State may contain spaces
+
+        if user == node:
+            return host, perceived, state
+
+    return None, None, None
+
+def check_iax_registration(node):
+    """ validate IAX registration status """
+    host, myip, state = find_iax_registration(node)
+
+    if host is None:
+        print_error(f"There is no apparent IAX registration attempt for node {node}")
+        return True
+
+    if not state == "Registered":
+        print_error(f"IAX registration state is {state}")
+        return True
+
+    print_ok(f"IAX registration state is {state}")
+    print_ok(f"Perceived IAX IP:PORT for this node is: {myip}")
+
+    host = host.split(":")[0]
+    reghost_name = reverse_dns(host)
+    
+    print_ok(f"Registered to {reghost_name} - {host}")
+    return True
+
+def find_http_registration(node):
+    """
+    Runs 'asterisk -rx "rpt show registrations"' and returns a list of tuples:
+        (Host, Perceived, State)
+    for all rows matching the given username.
+    Returns an empty list if none match.
+    """
+
+    cmd = "asterisk -rx 'rpt show registrations'"
+    try:
+        output = subprocess.check_output(
+            shlex.split(cmd),
+            text=True,
+            stderr=subprocess.STDOUT
+        )
+    except subprocess.CalledProcessError:
+        return []
+
+    lines = output.strip().splitlines()
+    if len(lines) < 3:
+        return []
+
+    results = []
+
+    # Skip header line
+    data_lines = lines[1:]
+
+    for line in data_lines:
+        # Skip summary line like "2 HTTP registrations."
+        if "registrations" in line:
+            continue
+
+        parts = line.split()
+        if len(parts) != 5:
+            continue
+
+        host      = parts[0]
+        user      = parts[1]
+        perceived = parts[2]
+        refresh   = parts[3]
+        state     = " ".join(parts[4:])  # State may contain multiple words
+
+        if user == node:
+            return host, perceived, state
+
+    return None, None, None
+
+def check_http_registration(node):
+    """ validate HTTP registration status """
+    host, myip, state = find_http_registration(node)
+
+    if host is None:
+        print_error(f"There is no apparent HTTP registration attempt for node {node}")
+        return True
+
+    if not state == "Registered":
+        print_error(f"HTTP registration state is {state}")
+        return True
+
+    print_ok(f"HTTP registration state is {state}")
+    print_ok(f"Perceived IAX IP:PORT for this node is: {myip}")
+
+    reghost_name = reverse_dns(host.split(":")[0])
+    host = host.split(":")[0]
+    print_ok(f"Registered to {reghost_name} - {host}")
+    return True
+
+def get_iax_bindport(filename="/etc/asterisk/iax.conf"):
+    """
+    Reads the given iax.conf file, finds a line of the form:
+        bindport = <number>
+    and returns the number as an int.
+    Returns None if not found or malformed.
+    """
+    pattern = re.compile(r'^bindport\s*=\s*(\d+)')
+
+    try:
+        with open(filename, "r") as f:
+            for line in f:
+                m = pattern.match(line)
+                if m:
+                    return int(m.group(1))
+    except OSError:
+        return None
+
+    print_error("binddport does not appear to be set in iax.conf")
+    return None
+
+def get_node_stats(node):
+    """
+    Fetch JSON from an HTTP API endpoint.
+    Returns the parsed JSON (dict/list) or None on failure.
+    """
+    try:
+        url = f"https://stats.allstarlink.org/api/stats/{node}"
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()  # raises for 4xx/5xx
+        return response.json()
+    except (requests.RequestException, ValueError):
+        return None
+
+def check_node_status(node):
+    """ compare stats operational data """
+    n_errors = 0
+    n_warnings = 0
+
+    bind_udpport = get_iax_bindport()
+    if bind_udpport is None:
+        n_errors += 1
+
+    stats = get_node_stats(node)
+
+    if stats is None:
+        print_error(f"No stats available... cannot continue this check set")
+        n_warnings += 1
+        return n_errors, n_warnings
+
+    stats_udpport = stats['stats']['user_node']['server']['udpport']
+    if stats_udpport == bind_udpport:
+        print_ok(f"Server-set UDP port matches bindport in iax.conf")
+    else:
+        print_error(f"Registered UDP port does not match bindport in iax.conf: {stats_udpport} != {bind_udpport}")
+
+    reg_since = stats['node']['regseconds']
+    reg_since_dt = datetime.fromtimestamp(reg_since, UTC)
+    reg_since_str = reg_since_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+    if reg_since_dt < datetime.now(UTC) - timedelta(minutes=15):
+        print_error(f"Node not registered in last 15 minutes: {reg_since_str}")
+        n_errors += 1
+    else:
+        print_ok(f"Node registration within 15 minutes: {reg_since_str}")
+
+    iptime = stats['node']['iptime']
+    print_info(f"Last time IP changed was {iptime} UTC")
+
+    return n_errors, n_warnings
+
+def get_node_ping(node):
+    """
+    Fetch JSON from an HTTP API endpoint.
+    Returns the parse JSON (dict/list) or None on failure.
+    """
+    try:
+        url = f"https://nodeping.allstarlink.org?node={node}"
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()  # raises for 4xx/5xx
+        return response.json()
+    except (requests.RequestException, ValueError):
+        return None
+
+def check_node_reachability(node):
+    node_check = get_node_ping(node)
+
+    if node_check is None:
+        print_warning("Nodeping is not responding - rate-limited or it's down")
+        return 0,1
+
+    pingms = node_check['ipv4']['pingms']
+    status = node_check['ipv4']['status']
+
+    if status == "unreachable":
+        print_error("Nodeping is unable to connect to node; client IP or firewall issue")
+        return 1,0
+
+    if status == "ok":
+        print_ok(f"Nodeping is able to connect to node with an RTT of {pingms}ms")
+        return 0,0
+
+    print_warning("Nodeping is returning something I don't understand")
+    return 0,1
+    
+def main():
+
+    print("\n-----===== AllStarLink Node Authentication Check =====-----\n")
+    print("Checking configuration:")
+    
+    registrations = (get_registrations())   
+    if registrations is None:
+        print_error("NO VALID REGISTRATIONS EXIST IN THE ASTERISK CONFIGURATION!")
+        print_error("RUN asl-menu OR INSPECT THE CONFIG FILES")
+        print("")
+        sys.exit()
+
+
+    for node, password, reghost, regtype in registrations:
+        print(f"  Found configured registration for node {node}")
+
+    for node, password, reghost, regtype in registrations:
+        total_errors = 0
+        total_warnings = 0
+
+        print(f"\nTesting node {node}:")
+        e, r = check_node_formedness(node, reghost)
+
+        if e > 0:
+            total_errors += e
+        if r > 0:
+            total_warnings += r
+        if e == 0 and r == 0:
+            print_ok("Node registration config is well-formed")
+
+        print_ok(f"Node registration type is {regtype}")
+        if regtype == "iax":
+            r = check_iax_registration(node)
+        if regtype == "http":
+            r= check_http_registration(node)
+        if r is False:
+            total_errors += 1
+
+        e, r = check_node_status(node)
+        if e > 0:
+            total_errors += e
+        if r > 0:
+            total_warnings += r
+
+        e, r = check_node_reachability(node)
+        if e > 0:
+            total_errors += e
+        if r > 0:
+            total_warnings += r
+
+        if total_errors > 0:
+            print_error(f"Node {node} has {total_errors} error(s)!")
+        if total_warnings > 0:
+            print_warning(f"Node {node} has {total_warnings} error(s!")
+
+        if total_errors == 0 and total_warnings > 0:
+            print(f"\nWARNINGS FOR NODE {node} THAT MAY OR MAY NOT BE PROBLEMS")
+        if total_errors == 0 and total_warnings == 0:
+            print(f"\nNO PROBLEMS DETECTED WITH NODE {node}")
+
+        
+
+if __name__ == "__main__":
+    main()
