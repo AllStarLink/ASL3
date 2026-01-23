@@ -12,7 +12,8 @@ Rules-Requires-Root: binary-targets
 Package: asl3
 Architecture: all
 Depends: ${misc:Depends}, asl3-asterisk, asl3-menu, dahdi-linux, lsb-release, 
-  bind9-dnsutils, uuid, curl, lame, sox, whiptail, python3-serial, dahdi-dkms (>= 3.4.0-6)
+  bind9-dnsutils, uuid, curl, lame, sox, whiptail, python3-serial,
+  python3-requests, dahdi-dkms (>= 3.4.0-6)
 Breaks: asl3-pi-appliance (<< 1.8.0)
 Suggests: allmon3, asl3-update-nodelist
 Description: AllStarLink 3
