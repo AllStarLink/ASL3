@@ -37,6 +37,16 @@ def require_root_or_asterisk():
         print_error(f"Access denied: script must run as root or asterisk (current user: {user})\n")
         sys.exit(1)
 
+def compare_node_lists(configed_nodes, registrations_nodes):
+    set_config = set(configed_nodes)
+    set_regs = set(registrations_nodes)
+
+    identical = (set_config == set_regs)
+
+    missing_from_config = set_regs - set_config
+    missing_from_regs = set_config - set_regs
+
+    return identical, list(missing_from_config), list(missing_from_regs)
 
 def reverse_dns(ip):
     """
@@ -90,8 +100,8 @@ def extract_registration_values(filename, regtype):
 def get_registrations():
     """ obtain all the configurations from a registration file """
     conf_files = [
-        ("/etc/asterisk/iax.conf","iax"),
-        ("/etc/asterisk/rpt_http_registrations.conf","http")
+        ("/etc/asterisk/iax.conf","IAX"),
+        ("/etc/asterisk/rpt_http_registrations.conf","HTTP")
     ]
     config_registers = []
     config_has_one_reg = False
@@ -101,8 +111,11 @@ def get_registrations():
         r = extract_registration_values(filename, regtype)
 
         if len(r) < 1:
-            print_info(f"{filename} contains no registration lines. This might be okay if other files have them.")
+            print_info(f"{filename} contains no registration lines.")
             continue
+        else:
+            i = len(r)
+            print_info(f"{filename} contains {i} registration line(s)")
 
         config_registers.extend(r)
         config_has_one_reg = True
@@ -110,6 +123,25 @@ def get_registrations():
     if config_has_one_reg is False:
         return None
     return config_registers
+
+def get_rpt_nodes(conf_path="/etc/asterisk/rpt.conf"):
+    """
+    Returns a list of node numbers that appear as:
+        [12345](node-main)
+    ignoring whitespace.
+    """
+    pattern = re.compile(r"\[\s*(\d+)\s*\]\s*\(\s*node-main\s*\)", re.IGNORECASE)
+    nodes = []
+
+    with open(conf_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            m = pattern.search(line)
+            if m:
+                nodes.append(m.group(1))
+
+    return nodes
+
 
 def check_node_formedness(node,reghost):
     """ validate node and reghost """
@@ -336,7 +368,9 @@ def check_node_status(node):
         print_ok(f"Server-set UDP port matches bindport in iax.conf")
     else:
         print_error(f"Registered UDP port does not match bindport in iax.conf: {stats_udpport} != {bind_udpport}")
-        print_info("Mismatched IAX information might be okay if your node is pingable")
+        print_info("Mismatched IAX information might be okay if your router has been configured to")
+        print_info("perform the external->internal port forwarding.  The \"Nodeping\" status, below,")
+        print_info("can be used to confirm inbound connectivity.")
         print_info("in the later test and you have done a port-mapping in a router/firewall")
         n_errors += 1
 
@@ -394,6 +428,16 @@ def main():
     print("\n-----===== AllStarLink Node Authentication Check =====-----\n")
     print("Checking configuration:")
     
+    configed_nodes = get_rpt_nodes()
+    if configed_nodes is None:
+        print_error("NO NODE ARE CONFIGURED IN rpt.conf")
+        print_error("RUN asl-menu OR INSPECT THE CONFIG FILES")
+        print("")
+        sys.exit()
+
+    configed_nodes_string = ", ".join(configed_nodes)
+    print_info(f"rpt.conf has configuration for: {configed_nodes_string}")
+
     registrations = (get_registrations())   
     if registrations is None:
         print_error("NO VALID REGISTRATIONS EXIST IN THE ASTERISK CONFIGURATION!")
@@ -401,9 +445,20 @@ def main():
         print("")
         sys.exit()
 
+    registrations_nodes = [n[0] for n in registrations]
+    registration_nodes_string = ", ".join(registrations_nodes)
+    print_info(f"Regsitrations have configuration for: {registration_nodes_string}")
 
-    for node, password, reghost, regtype in registrations:
-        print(f"  Found configured registration for node {node}")
+    identical, missing_from_config, missing_from_regs = compare_node_lists(configed_nodes, registrations_nodes)
+    if not identical:
+        if len(missing_from_regs) > 0:
+            mr = ", ".join(missing_from_regs)
+            print_error(f"No registration present for configured node(s): {mr}")
+        if len(missing_from_config) > 0:
+            mc = ", ".join(missing_from_config)
+            print_error(f"No configuration present for registrations for node(s): {mc}")
+        print_error(f"Cannot continue; reconcile configuration before proceeding")
+        sys.exit()
 
     for node, password, reghost, regtype in registrations:
         total_errors = 0
@@ -420,9 +475,9 @@ def main():
             print_ok("Node registration config is well-formed")
 
         print_ok(f"Node registration type is {regtype}")
-        if regtype == "iax":
+        if regtype == "IAX":
             r = check_iax_registration(node)
-        if regtype == "http":
+        if regtype == "HTTP":
             r= check_http_registration(node)
         if r is False:
             total_errors += 1
