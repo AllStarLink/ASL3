@@ -9,6 +9,7 @@ import shlex
 import sys
 import socket
 import ipaddress
+from collections import Counter
 from datetime import datetime, timedelta, UTC
 
 _registration_re = re.compile(r'^(\d+):([^@]+)@([a-zA-Z0-9\.]+)$')
@@ -80,8 +81,7 @@ def parse_registration_string(s):
 
 def extract_registration_values(filename, regtype):
     """ extract the register => lines from a config file """
-    pattern = re.compile(r'^register\s*=>\s*(.*)$')
-
+    pattern = re.compile(r'^register\s*=>\s*(\S+)\s.*$')
     results = []
     with open(filename, 'r') as f:
         for line in f:
@@ -371,7 +371,6 @@ def check_node_status(node):
         print_info("Mismatched IAX information might be okay if your router has been configured to")
         print_info("perform the external->internal port forwarding.  The \"Nodeping\" status, below,")
         print_info("can be used to confirm inbound connectivity.")
-        print_info("in the later test and you have done a port-mapping in a router/firewall")
         n_errors += 1
 
     node_reginfo = get_node_regtime(node)
@@ -448,6 +447,14 @@ def main():
     registrations_nodes = [n[0] for n in registrations]
     registration_nodes_string = ", ".join(registrations_nodes)
     print_info(f"Registrations present for configured node(s): {registration_nodes_string}")
+
+    counts = Counter(registrations_nodes)
+    duplicates = [s for s, count in counts.items() if count >= 2]
+    if duplicates != []:
+        duplicates_string = ", ".join(duplicates)
+        print_error(f"Duplicated HTTP and IAX registrations for: {duplicates_string}")
+        print_error(f"Cannot continue; reconcile configuration before proceeding")
+        sys.exit()
 
     identical, missing_from_config, missing_from_regs = compare_node_lists(configed_nodes, registrations_nodes)
     if not identical:
