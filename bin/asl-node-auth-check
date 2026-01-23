@@ -130,7 +130,7 @@ def get_rpt_nodes(conf_path="/etc/asterisk/rpt.conf"):
         [12345](node-main)
     ignoring whitespace.
     """
-    pattern = re.compile(r"\[\s*(\d+)\s*\]\s*\(\s*node-main\s*\)", re.IGNORECASE)
+    pattern = re.compile(r"^\[\s*(\d+)\s*\]", re.IGNORECASE)
     nodes = []
 
     with open(conf_path, "r") as f:
@@ -447,7 +447,7 @@ def main():
 
     registrations_nodes = [n[0] for n in registrations]
     registration_nodes_string = ", ".join(registrations_nodes)
-    print_info(f"Regsitrations have configuration for: {registration_nodes_string}")
+    print_info(f"Registrations present for configured node(s): {registration_nodes_string}")
 
     identical, missing_from_config, missing_from_regs = compare_node_lists(configed_nodes, registrations_nodes)
     if not identical:
