@@ -217,11 +217,11 @@ def check_iax_registration(node):
 
     if host is None:
         print_error(f"There is no apparent IAX registration attempt for node {node}")
-        return True
+        return False
 
     if not state == "Registered":
         print_error(f"IAX registration state is {state}")
-        return True
+        return False
 
     print_ok(f"IAX registration state is {state}")
     print_ok(f"Perceived IAX IP:PORT for this node is: {myip}")
@@ -285,11 +285,11 @@ def check_http_registration(node):
 
     if host is None:
         print_error(f"There is no apparent HTTP registration attempt for node {node}")
-        return True
+        return False
 
     if not state == "Registered":
         print_error(f"HTTP registration state is {state}")
-        return True
+        return False
 
     print_ok(f"HTTP registration state is {state}")
     print_ok(f"Perceived IAX IP:PORT for this node is: {myip}")
