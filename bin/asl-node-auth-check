@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+import os
+import pwd
 import re
 import requests
 import subprocess
@@ -26,6 +28,15 @@ def print_info(msg):
 
 def print_ok(msg):
     print_element_msg(msg,"OK")
+
+def require_root_or_asterisk():
+    uid = os.geteuid()
+    user = pwd.getpwuid(uid).pw_name
+
+    if user not in ("root", "asterisk"):
+        print_error(f"Access denied: script must run as root or asterisk (current user: {user})\n")
+        sys.exit(1)
+
 
 def reverse_dns(ip):
     """
@@ -137,11 +148,11 @@ def find_iax_registration(node):
             stderr=subprocess.STDOUT
         )
     except subprocess.CalledProcessError:
-        return None
+        return None, None, None
 
     lines = output.strip().splitlines()
     if len(lines) < 3:
-        return None
+        return None, None, None
 
     # Skip header line
     data_lines = lines[1:]
@@ -205,11 +216,11 @@ def find_http_registration(node):
             stderr=subprocess.STDOUT
         )
     except subprocess.CalledProcessError:
-        return []
+        return None, None, None
 
     lines = output.strip().splitlines()
     if len(lines) < 3:
-        return []
+        return None, None, None
 
     results = []
 
@@ -290,6 +301,20 @@ def get_node_stats(node):
     except (requests.RequestException, ValueError):
         return None
 
+def get_node_regtime(node):
+    """
+    Fetch JSON from an HTTP API endpoint.
+    Returns the parsed JSON (dict/list) or None on failure.
+    """
+    try:
+        url = f"https://www.allstarlink.org/nodelist/nodelist-server.php?inactives=1&node={node}"
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()  # raises for 4xx/5xx
+        return response.json()
+    except (requests.RequestException, ValueError):
+        print("error")
+        return None
+
 def check_node_status(node):
     """ compare stats operational data """
     n_errors = 0
@@ -311,8 +336,12 @@ def check_node_status(node):
         print_ok(f"Server-set UDP port matches bindport in iax.conf")
     else:
         print_error(f"Registered UDP port does not match bindport in iax.conf: {stats_udpport} != {bind_udpport}")
+        print_info("Mismatched IAX information might be okay if your node is pingable")
+        print_info("in the later test and you have done a port-mapping in a router/firewall")
+        n_errors += 1
 
-    reg_since = stats['node']['regseconds']
+    node_reginfo = get_node_regtime(node)
+    reg_since = node_reginfo[0]['regseconds']
     reg_since_dt = datetime.fromtimestamp(reg_since, UTC)
     reg_since_str = reg_since_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
     if reg_since_dt < datetime.now(UTC) - timedelta(minutes=15):
@@ -423,4 +452,5 @@ def main():
         
 
 if __name__ == "__main__":
+    require_root_or_asterisk()
     main()
