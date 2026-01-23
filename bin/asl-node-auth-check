@@ -265,7 +265,7 @@ def find_http_registration(node):
             continue
 
         parts = line.split()
-        if len(parts) != 5:
+        if len(parts) < 5:
             continue
 
         host      = parts[0]
@@ -502,16 +502,17 @@ def main():
             total_warnings += r
 
         if total_errors > 0:
+            print("")
             print_error(f"Node {node} has {total_errors} error(s)!")
         if total_warnings > 0:
-            print_warning(f"Node {node} has {total_warnings} error(s!")
+            print("")
+            print_warning(f"Node {node} has {total_warnings} warning(s)!")
+            print_warning(f"Warnings may or may not be problems depending on configuration")
 
-        if total_errors == 0 and total_warnings > 0:
-            print(f"\nWARNINGS FOR NODE {node} THAT MAY OR MAY NOT BE PROBLEMS")
         if total_errors == 0 and total_warnings == 0:
-            print(f"\nNO PROBLEMS DETECTED WITH NODE {node}")
+            print_ok(f"No problems detected with node {node}")
 
-        
+        print("") 
 
 if __name__ == "__main__":
     require_root_or_asterisk()
