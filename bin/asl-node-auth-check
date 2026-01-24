@@ -1,16 +1,20 @@
 #!/usr/bin/python3
 
+import ipaddress
 import os
 import pwd
 import re
 import requests
-import subprocess
 import shlex
-import sys
 import socket
-import ipaddress
+import subprocess
+import sys
+
 from collections import Counter
 from datetime import datetime, timedelta, UTC
+from urllib.parse import urlparse, urlunparse
+from requests.packages.urllib3.poolmanager import PoolManager 
+from requests.adapters import HTTPAdapter
 
 _registration_re = re.compile(r'^(\d+):([^@]+)@([a-zA-Z0-9\.]+)$')
 _reghost_re = re.compile(r'^register\.allstarlink\.org$')
@@ -355,7 +359,6 @@ def get_node_regtime(node):
         response.raise_for_status()  # raises for 4xx/5xx
         return response.json()
     except (requests.RequestException, ValueError):
-        print("error")
         return None
 
 def check_node_status(node):
@@ -413,6 +416,7 @@ def get_node_ping(node):
         return None
 
 def check_node_reachability(node):
+    """ checks inbound node reachability """
     node_check = get_node_ping(node)
 
     if node_check is None:
@@ -433,6 +437,108 @@ def check_node_reachability(node):
 
     print_warning("Nodeping is returning something I don't understand")
     return 0,1
+
+def get_remote_ip_http(url):
+    """
+    Fetch JSON from an HTTP API endpoint.
+    Returns the parsed text or None
+    """
+    try:
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()  # raises for 4xx/5xx
+        return response.text.strip()
+    except (requests.RequestException, ValueError) as e:
+        return None
+
+def udp_ping(url: str, message: str = "ping", timeout: float = 3.0) -> str:
+    """
+    Send a UDP packet to the host/port in the given udp:// URL
+    and return the text response.
+
+    Parameters
+    ----------
+    udp_pingurl : str
+        A URL like "udp://hostname:port"
+    message : str
+        The text to send (default: "ping")
+    timeout : float
+        Seconds to wait for a response
+
+    Returns
+    -------
+    str
+        The decoded text returned by the server.
+
+    Raises
+    ------
+    ValueError
+        If the URL is invalid or missing host/port.
+    TimeoutError
+        If no response is received within the timeout.
+    OSError
+        For underlying socket errors.
+    """
+    parsed = urlparse(url)
+
+    if parsed.scheme != "udp":
+        raise ValueError(f"URL must start with udp://, got: {url}")
+
+    host = parsed.hostname
+    port = parsed.port
+
+    if not host or not port:
+        raise ValueError(f"URL must include host and port, got: {url}")
+
+    # Resolve IPv4 only
+    try:
+        infos = socket.getaddrinfo(
+            host,
+            port,
+            family=socket.AF_INET,      
+            type=socket.SOCK_DGRAM
+        )
+    except socket.gaierror:
+        return None
+
+    # Use the first IPv4 result
+    family, socktype, proto, canonname, sockaddr = infos[0]
+
+    sock = socket.socket(family, socktype, proto)
+    sock.settimeout(timeout)
+
+    try:
+        sock.sendto(message.encode("utf-8"), sockaddr)
+        data, _ = sock.recvfrom(2048)
+        return data.decode("utf-8", errors="replace")
+    except socket.timeout:
+        return None
+    finally:
+        sock.close()
+
+
+def check_remote_ip_perception():
+    """ checks remote targets for perceived IPs """
+    remote_http_checks = [
+        "https://conntest-west2.allstarlink.org/ip"
+    ]
+
+    remote_udp_checks = [
+        "udp://conntest-west2.allstarlink.org:4569"
+    ]
+
+    for url in remote_http_checks:
+        ip = get_remote_ip_http(url)
+        if not ip is None:
+            print_info(f"IP from {url} reports: {ip}")
+        else:
+            print_warning(f"IP test to {url} failed")
+
+    for host in remote_udp_checks:
+        ip = udp_ping(host)
+        if not ip is None:
+            print_info(f"IP from {host} reports: {ip}")
+        else:
+            print_warning(f"IP test to {host} failed")
     
 def main():
 
@@ -478,6 +584,8 @@ def main():
             print_error(f"No configuration present for registrations for node(s): {mc}")
         print_error(f"Cannot continue; reconcile configuration before proceeding")
         sys.exit()
+
+    check_remote_ip_perception()
 
     for node, password, reghost, regtype in registrations:
         total_errors = 0
