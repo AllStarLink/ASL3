@@ -377,11 +377,11 @@ def check_node_status(node):
     reg_since = node_reginfo[0]['regseconds']
     reg_since_dt = datetime.fromtimestamp(reg_since, UTC)
     reg_since_str = reg_since_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
-    if reg_since_dt < datetime.now(UTC) - timedelta(minutes=15):
-        print_error(f"Node not registered in last 15 minutes: {reg_since_str}")
+    if reg_since_dt < datetime.now(UTC) - timedelta(minutes=10):
+        print_error(f"Node not registered in last 10 minutes: {reg_since_str}")
         n_errors += 1
     else:
-        print_ok(f"Node registration within 15 minutes: {reg_since_str}")
+        print_ok(f"Node registration within 10 minutes: {reg_since_str}")
 
     iptime = stats['node']['iptime']
     print_info(f"Last time IP changed was {iptime} UTC")
@@ -412,11 +412,12 @@ def check_node_reachability(node):
     status = node_check['ipv4']['status']
 
     if status == "unreachable":
-        print_error("Nodeping is unable to connect to node; client IP or firewall issue")
+        print_error("Incoming connections to IAX from other nodes failed; client IP or firewall issue")
         return 1,0
 
     if status == "ok":
-        print_ok(f"Nodeping is able to connect to node with an RTT of {pingms}ms")
+        print_ok(f"Incoming connections to IAX from other nodes is successful")
+        print_info("IAX ping test has a roundtrip time of {pingms}ms")
         return 0,0
 
     print_warning("Nodeping is returning something I don't understand")
@@ -488,18 +489,21 @@ def main():
             r= check_http_registration(node)
         if r is False:
             total_errors += 1
+            print_info("Stopping node checks due to registration failure")
+            print_info("as further information will be unreliable")
 
-        e, r = check_node_status(node)
-        if e > 0:
-            total_errors += e
-        if r > 0:
-            total_warnings += r
-
-        e, r = check_node_reachability(node)
-        if e > 0:
-            total_errors += e
-        if r > 0:
-            total_warnings += r
+        if r is True:
+            e, r = check_node_status(node)
+            if e > 0:
+                total_errors += e
+            if r > 0:
+                total_warnings += r
+    
+            e, r = check_node_reachability(node)
+            if e > 0:
+                total_errors += e
+            if r > 0:
+                total_warnings += r
 
         if total_errors > 0:
             print("")
