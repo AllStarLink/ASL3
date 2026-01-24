@@ -428,7 +428,7 @@ def check_node_reachability(node):
 
     if status == "ok":
         print_ok(f"Incoming connections to IAX from other nodes is successful")
-        print_info("IAX ping test has a roundtrip time of {pingms}ms")
+        print_info(f"IAX ping test has a roundtrip time of {pingms}ms")
         return 0,0
 
     print_warning("Nodeping is returning something I don't understand")
