@@ -66,6 +66,17 @@ def reverse_dns(ip):
     except socket.herror:
         return None
 
+def is_register_allstarlink_up(timeout=5):
+    """
+    Returns True if https://register.allstarlink.org responds with HTTP 200.
+    Returns False for any other status code or network error.
+    """
+    url = "https://register.allstarlink.org"
+    try:
+        response = requests.get(url, timeout=timeout)
+        return response.status_code == 200
+    except requests.RequestException:
+        return False
 
 def parse_registration_string(s):
     """
@@ -160,7 +171,7 @@ def check_node_formedness(node,reghost):
 
     m = _reghost_re.match(reghost)
     if m is None:
-        print_error(f"Registration has a reghost of {reghost} which is not 'register.allstarlink.org'")
+        print_error(f"Registration has a reghost of '{reghost}' which is not 'register.allstarlink.org'")
         n_errors += 1
 
     return n_errors, n_warnings
@@ -483,6 +494,13 @@ def main():
             print_ok("Node registration config is well-formed")
 
         print_ok(f"Node registration type is {regtype}")
+
+        regup = is_register_allstarlink_up()
+        if regup is True:
+            print_ok("register.allstarlink.org is reachable (via HTTP)")
+        else:
+            print_error("register.allstarlink.org is unreachable (via HTTP)")
+
         if regtype == "IAX":
             r = check_iax_registration(node)
         if regtype == "HTTP":
