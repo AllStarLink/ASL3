@@ -509,7 +509,8 @@ def udp_ping(url: str, message: str = "ping", timeout: float = 3.0) -> str:
     try:
         sock.sendto(message.encode("utf-8"), sockaddr)
         data, _ = sock.recvfrom(2048)
-        return data.decode("utf-8", errors="replace")
+        ip = data.decode("utf-8", errors="replace")
+        return ip.split(":")[0]
     except socket.timeout:
         return None
     finally:
@@ -519,17 +520,27 @@ def udp_ping(url: str, message: str = "ping", timeout: float = 3.0) -> str:
 def check_remote_ip_perception():
     """ checks remote targets for perceived IPs """
     remote_http_checks = [
+        "https://conntest-east1.allstarlink.org/ip" ,
+        "https://conntest-west1.allstarlink.org/ip" ,
         "https://conntest-west2.allstarlink.org/ip"
     ]
 
     remote_udp_checks = [
+        "udp://conntest-east1.allstarlink.org:4570" ,
+        "udp://conntest-west1.allstarlink.org:4569" ,
         "udp://conntest-west2.allstarlink.org:4569"
     ]
+
+    probed_ips_http = []
+    probed_ips_iax = []
+
+    consensus_ip = None
 
     for url in remote_http_checks:
         ip = get_remote_ip_http(url)
         if not ip is None:
             print_info(f"IP from {url} reports: {ip}")
+            probed_ips_http.append(ip)
         else:
             print_warning(f"IP test to {url} failed")
 
@@ -537,8 +548,24 @@ def check_remote_ip_perception():
         ip = udp_ping(host)
         if not ip is None:
             print_info(f"IP from {host} reports: {ip}")
+            probed_ips_iax.append(ip)
         else:
             print_warning(f"IP test to {host} failed")
+
+    probed_ips_http = set(probed_ips_http)
+    probed_ips_iax = set(probed_ips_iax)
+
+    if len(probed_ips_http) == 1:
+        print_ok("HTTP IP probes have consensus on the same perceived IP")
+    else:
+        print_error("HTTP IP probes DO NOT have consensus on the same perceived IP! CGNAT?")
+
+    if len(probed_ips_iax) == 1:
+        print_ok("IAX IP probes have consensus on the same perceived IP")
+    else:
+        print_error("IAX IP probes DO NOT have consensus on the same perceived IP! CGNAT?")
+
+
     
 def main():
 
