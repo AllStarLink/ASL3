@@ -423,6 +423,9 @@ def check_node_reachability(node):
         print_warning("Nodeping is not responding - rate-limited or it's down")
         return 0,1
 
+    if node_check['ipv4']['status'] == "unregistered":
+        print_warning("Node is not preceived as registered; not tested")
+        return 0,1
     pingms = node_check['ipv4']['pingms']
     status = node_check['ipv4']['status']
 
