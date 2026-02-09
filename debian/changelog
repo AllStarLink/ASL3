@@ -1,3 +1,11 @@
+asl3 (3.13-1) stable; urgency=medium
+
+  * asl-telemetry: deal better with non-IAX connections (#170)
+  * asl-find-found: show device serial numbers when present (#172)
+  * asl-node-auth-check: new utility to test auth and connections (#173) 
+
+ -- Jason McCormick <jason@mfamily.org>  Mon, 09 Feb 2026 12:26:43 -0500
+
 asl3 (3.12-1) stable; urgency=medium
 
   * sa818, sa818-menu: allow CTCSS split (on tone "on", one tone "off") (#162)
