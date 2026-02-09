@@ -426,14 +426,14 @@ def check_node_reachability(node):
     if node_check['ipv4']['status'] == "unregistered":
         print_warning("Node is not preceived as registered; not tested")
         return 0,1
-    pingms = node_check['ipv4']['pingms']
-    status = node_check['ipv4']['status']
 
+    status = node_check['ipv4']['status']
     if status == "unreachable":
         print_error("Incoming connections to IAX from other nodes failed; client IP or firewall issue")
         return 1,0
 
     if status == "ok":
+        pingms = node_check['ipv4']['pingms']
         print_ok(f"Incoming connections to IAX from other nodes is successful")
         print_info(f"IAX ping test has a roundtrip time of {pingms}ms")
         return 0,0
