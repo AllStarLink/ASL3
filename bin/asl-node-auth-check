@@ -96,7 +96,7 @@ def parse_registration_string(s):
 
 def extract_registration_values(filename, regtype):
     """ extract the register => lines from a config file """
-    pattern = re.compile(r'^register\s*=>\s*(\S+)\s.*$')
+    pattern = re.compile(r'^register\s*=>?\s*(\S+)\s.*$')
     results = []
     with open(filename, 'r') as f:
         for line in f:
