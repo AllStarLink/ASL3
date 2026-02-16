@@ -153,7 +153,10 @@ def get_rpt_nodes(conf_path="/etc/asterisk/rpt.conf"):
             line = line.strip()
             m = pattern.search(line)
             if m:
-                nodes.append(m.group(1))
+                if int(m.group(1)) > 1999:
+                    nodes.append(m.group(1))
+                else:
+                    print_info(f"Skipping evaluation of private node {m.group(1)}")
 
     return nodes
 
