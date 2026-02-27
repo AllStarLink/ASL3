@@ -1,3 +1,9 @@
+asl3 (3.15-1) stable; urgency=medium
+
+  * asl-node-auth-check: Remove stray debug print
+
+ -- Jason McCormick <jason@mfamily.org>  Thu, 26 Feb 2026 21:15:20 -0500
+
 asl3 (3.14-1) stable; urgency=medium
 
   * asl-node-auth-check: Fix a few bugs from prod (#175) 
