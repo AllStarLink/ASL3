@@ -13,7 +13,7 @@ import sys
 from collections import Counter
 from datetime import datetime, timedelta, UTC
 from urllib.parse import urlparse, urlunparse
-from requests.packages.urllib3.poolmanager import PoolManager 
+from requests.packages.urllib3.poolmanager import PoolManager
 from requests.adapters import HTTPAdapter
 
 _registration_re = re.compile(r'^(\d+):([^@]+)@([a-zA-Z0-9\.]+)$')
@@ -96,7 +96,7 @@ def parse_registration_string(s):
 
 def extract_registration_values(filename, regtype):
     """ extract the register => lines from a config file """
-    pattern = re.compile(r'^register\s*=>\s*(\S+)\s.*$')
+    pattern = re.compile(r'^register\s*=>?\s*(\S+)\s.*$')
     results = []
     with open(filename, 'r') as f:
         for line in f:
@@ -153,7 +153,10 @@ def get_rpt_nodes(conf_path="/etc/asterisk/rpt.conf"):
             line = line.strip()
             m = pattern.search(line)
             if m:
-                nodes.append(m.group(1))
+                if int(m.group(1)) > 1999:
+                    nodes.append(m.group(1))
+                else:
+                    print_info(f"Skipping evaluation of private node {m.group(1)}")
 
     return nodes
 
@@ -243,7 +246,7 @@ def check_iax_registration(node):
 
     host = host.split(":")[0]
     reghost_name = reverse_dns(host)
-    
+
     print_ok(f"Registered to {reghost_name} - {host}")
     return True
 
@@ -418,13 +421,13 @@ def get_node_ping(node):
 def check_node_reachability(node):
     """ checks inbound node reachability """
     node_check = get_node_ping(node)
-
+    print(node_check)
     if node_check is None:
         print_warning("Nodeping is not responding - rate-limited or it's down")
         return 0,1
 
-    if node_check['ipv4']['status'] == "unregistered":
-        print_warning("Node is not preceived as registered; not tested")
+    if node_check['ipv4']['status'] == "unregistered" or node_check['ipv4']['rc'] == -9:
+        print_warning("Node is not perceived as registered; not tested")
         return 0,1
 
     status = node_check['ipv4']['status']
@@ -497,7 +500,7 @@ def udp_ping(url: str, message: str = "ping", timeout: float = 3.0) -> str:
         infos = socket.getaddrinfo(
             host,
             port,
-            family=socket.AF_INET,      
+            family=socket.AF_INET,
             type=socket.SOCK_DGRAM
         )
     except socket.gaierror:
@@ -569,12 +572,12 @@ def check_remote_ip_perception():
         print_error("IAX IP probes DO NOT have consensus on the same perceived IP! CGNAT?")
 
 
-    
+
 def main():
 
     print("\n-----===== AllStarLink Node Authentication Check =====-----\n")
     print("Checking configuration:")
-    
+
     configed_nodes = get_rpt_nodes()
     if configed_nodes is None:
         print_error("NO NODE ARE CONFIGURED IN rpt.conf")
@@ -585,7 +588,7 @@ def main():
     configed_nodes_string = ", ".join(configed_nodes)
     print_info(f"rpt.conf has configuration for: {configed_nodes_string}")
 
-    registrations = (get_registrations())   
+    registrations = (get_registrations())
     if registrations is None:
         print_error("NO VALID REGISTRATIONS EXIST IN THE ASTERISK CONFIGURATION!")
         print_error("RUN asl-menu OR INSPECT THE CONFIG FILES")
@@ -654,7 +657,7 @@ def main():
                 total_errors += e
             if r > 0:
                 total_warnings += r
-    
+
             e, r = check_node_reachability(node)
             if e > 0:
                 total_errors += e
@@ -672,7 +675,7 @@ def main():
         if total_errors == 0 and total_warnings == 0:
             print_ok(f"No problems detected with node {node}")
 
-        print("") 
+        print("")
 
 if __name__ == "__main__":
     require_root_or_asterisk()
