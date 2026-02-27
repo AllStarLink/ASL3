@@ -421,7 +421,6 @@ def get_node_ping(node):
 def check_node_reachability(node):
     """ checks inbound node reachability """
     node_check = get_node_ping(node)
-    print(node_check)
     if node_check is None:
         print_warning("Nodeping is not responding - rate-limited or it's down")
         return 0,1
