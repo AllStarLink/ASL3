@@ -18,67 +18,6 @@ printf "\nII   Gathering asl-show-version information\n\n"
 asl-show-version
 
 printf "\n=====================================================================\n\n"
-printf "II   Checking Kernel and DAHDI status\n\n"
-
-##
-## Check for DAHDI/Kernel issues
-##
-
-PLATFORM_ARCH=$(uname -m)
-
-case ${PLATFORM_ARCH} in
-	x86_64)
-		DEBIAN_ARCH=amd64
-		;;
-	aarch64)
-		DEBIAN_ARCH=arm64
-		;;
-	*)
-		printf "EE   Unsupported hardware platform!\n\n"
-		;;
-esac
-
-RUNNING_KERNEL=$(uname -r)
-	
-DAHDI_ERRORS=0
-DAHDI_NUM_MODS=$(find /lib/modules/$(uname -r) -name '*dahdi*' | wc -l)
-[ ${DAHDI_NUM_MODS} -lt 1 ] && DAHDI_ERRORS=1
-
-if [ ${DAHDI_ERRORS} -ne 0 ]; then
-	printf "EE   Missing one or more DAHDI modules in the running kernel...\n"	
-
-
-	if ! `dpkg -l 'linux-headers*' | grep -vE '^(rc|un)' | grep -q ${RUNNING_KERNEL}`; then
-		printf "EE   Missing package linux-headers-${RUNNING_KERNEL}\n"
-	fi
-
-	printf "\n"
-	printf "??   Do you want to try to fix the issue? (y/N):  "
-	read DAHDI_FIX
-	if [ "${DAHDI_FIX}" == "y" ] || [ "${DAHDI_FIX}" == "Y" ]; then
-		printf "~~   ===== DOING APT THINGS ==========================\n\n"
-		apt update
-		apt install --reinstall -y linux-headers-${DEBIAN_ARCH} \
-			linux-headers-${RUNNING_KERNEL} dahdi-linux dahdi-dkms
-		printf "~~   ===== END OF APT THINGS =========================\n\n"		
-		
-		modprobe dahdi
-		modprobe dahdi_transcode
-		modprobe dahdi_dummy
-
-		DAHDI_NUM_MODS=$(find /lib/modules/$(uname -r) -name '*dahdi*' | wc -l)
-		if [ ${DAHDI_NUM_MODS} -lt 1 ]; then
-			printf "EE   Reinstalling headers and DAHDI did **NOT** succeeed"
-		fi
-
-	else
-		printf "II   Skipping fixing DAHDI kernel\n\n"
-	fi
-else
-	printf "II   No kernel or DAHDI issues detected\n"
-fi
-
-printf "\n=====================================================================\n\n"
 
 LOG_ERR_CNT=$(grep -E '\] ERROR' /var/log/asterisk/messages.log | wc -l)
 
