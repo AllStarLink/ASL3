@@ -30,7 +30,7 @@ to register with allstarlink.org. Private nodes and such are ignored.
 * Asterisk uptime and reload time
 * OS Platform information
 * Architecture type
-* List of installed packages related to ASL3 (allmon3, asl3\*, dahdi\*)
+* List of installed packages related to ASL3 (allmon3, asl3\*)
 
 # BUGS
 Report bugs to https://github.com/AllStarLink/ASL3/issues

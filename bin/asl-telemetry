@@ -122,7 +122,7 @@ OS_KERNEL=$(uname -r)
 OS_ARCH=$(uname -m)
 
 # Packages we care about
-PKGS=$(dpkg-query -f='"${binary:Package}" : "${Version}" , ' -W 'asl*' 'dahdi*' 'allmon3*' 2> /dev/null)
+PKGS=$(dpkg-query -f='"${binary:Package}" : "${Version}" , ' -W 'asl*' 'allmon3*' 2> /dev/null)
 PKGS=$(echo ${PKGS} | sed 's/,$//')
 PKGS="{ ${PKGS} }"
 
