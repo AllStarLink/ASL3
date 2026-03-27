@@ -104,11 +104,12 @@ def extract_registration_values(filename, regtype):
             if m:
                 value = re.sub(r'\s+', '', m.group(1))  # remove all whitespace
                 regtuple = parse_registration_string(value)
-                regtuple = regtuple + (regtype,)
                 if regtuple is None:
                     print_error(f"Invalid registration >> {value} << in {filename}")
                     continue
-                results.append(regtuple)
+                else:
+                    regtuple = regtuple + (regtype,)
+                    results.append(regtuple)
     return results
 
 
