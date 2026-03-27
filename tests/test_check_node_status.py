@@ -14,6 +14,8 @@ import unittest
 from datetime import datetime, timedelta, UTC
 from unittest.mock import MagicMock, patch
 
+from sympy import false
+
 
 # ---------------------------------------------------------------------------
 # Load bin/asl-node-auth-check as a module (no .py extension)
@@ -39,14 +41,6 @@ check_node_status = _mod.check_node_status
 # Helpers
 # ---------------------------------------------------------------------------
 
-# A stats response that satisfies all checks other than the regtime path
-_VALID_STATS = {
-    "node": {
-        "server": {"udpport": 4569},
-        "iptime": "2024-01-01 00:00:00",
-    }
-}
-
 # A recent timestamp (5 minutes ago) – well within the 10-minute window
 def _recent_regseconds():
     return int((datetime.now(UTC) - timedelta(minutes=5)).timestamp())
@@ -55,6 +49,128 @@ def _recent_regseconds():
 def _old_regseconds():
     return int((datetime.now(UTC) - timedelta(minutes=15)).timestamp())
 
+# A stats response that satisfies all checks other than the regtime path
+
+_VALID_STATS = {"stats":{"id":51941,
+          "node":12345,
+          "data":{"apprptuptime":"92435",
+                  "totalexecdcommands":"22",
+                  "totalkeyups":"36",
+                  "totaltxtime":"219",
+                  "apprptvers":"3.8.3",
+                  "timeouts":"0",
+                  "links":["287893"],
+                  "keyed":false,
+                  "time":"1774631643",
+                  "seqno":"1551",
+                  "nodes":"T287893",
+                  "totalkerchunks":"3",
+                  "keytime":"87920",
+                  "linkedNodes":[{"Node_ID":39151,
+                                  "User_ID ":"K8SN",
+                                  "Status":"Active",
+                                  "name":287893,
+                                  "ipaddr":"127.0.0.1",
+                                  "port":4569,
+                                  "regseconds":1774628887,
+                                  "iptime":"2024-03-24 15:34:42",
+                                  "node_frequency":"31269 Link WMTG",
+                                  "node_tone":"TS2 CC1",
+                                  "node_remotebase":false,
+                                  "node_freqagile":"0",
+                                  "callsign":"WM8TG\\DMR",
+                                  "access_reverseautopatch":"0",
+                                  "access_telephoneportal":"0",
+                                  "access_webtransceiver":"1",
+                                  "access_functionlist":"1",
+                                  "is_nnx":"Yes",
+                                  "server":{"Server_ID":1783,
+                                            "User_ID":"K8SN",
+                                            "Server_Name":"WMTG Hub Nodes",
+                                            "Affiliation":"West Michigan Technical Group",
+                                            "SiteName":"WMTG Hub Server Room",
+                                            "Logitude":"-85.703622",
+                                            "Latitude":"42.855955","Location":"Wyoming MI",
+                                            "TimeZone":"-5.0","udpport":4569,
+                                            "proxy_ip":None}}]},
+          "created_at":"2026-02-27T14:20:37.000000Z",
+          "updated_at":"2026-03-27T17:14:03.000000Z",
+          "user_node":{"Node_ID":94880,
+                       "User_ID":"N8RAW",
+                       "Status":"Active",
+                       "name":12345,
+                       "ipaddr":"127.0.0.1",
+                       "port":4569,"regseconds":1774099899,
+                       "iptime":"2026-03-18 18:16:29",
+                       "node_frequency":"",
+                       "node_tone":"",
+                       "node_remotebase":false,
+                       "node_freqagile":"0",
+                       "callsign":"N8RAW",
+                       "access_reverseautopatch":"0",
+                       "access_telephoneportal":"0",
+                       "access_webtransceiver":"1",
+                       "access_functionlist":"1",
+                       "is_nnx":"No",
+                       "server":{"Server_ID":42270,
+                                 "User_ID":"N8RAW",
+                                 "Server_Name":"N8RAW",
+                                 "Affiliation":"",
+                                 "SiteName":"Jenison",
+                                 "Logitude":"-85.81169",
+                                 "Latitude":"42.926929",
+                                 "Location":"Jenison, MI",
+                                 "TimeZone":None,
+                                 "udpport":4569,
+                                 "proxy_ip":None}}},
+ "node":{"Node_ID":94880,
+         "User_ID":"N8RAW",
+         "Status":"Active",
+         "name":12345,
+         "ipaddr":"44.15.4.13",
+         "port":4569,
+         "regseconds":1774628260,
+         "iptime":"2026-03-18 18:16:29",
+         "node_frequency":"",
+         "node_tone":"",
+         "node_remotebase":false,
+         "node_freqagile":"0",
+         "callsign":"N8RAW",
+         "access_reverseautopatch":"0",
+         "access_telephoneportal":"0",
+         "access_webtransceiver":"1",
+         "access_functionlist":"1",
+         "is_nnx":"No",
+         "server":{"Server_ID":42270,
+                   "User_ID":"N8RAW",
+                   "Server_Name":"N8RAW",
+                   "Affiliation":"",
+                   "SiteName":"Jenison",
+                   "Logitude":"-85.81169",
+                   "Latitude":"42.926929",
+                   "Location":"Jenison, MI",
+                   "TimeZone":None,
+                   "udpport":4569,
+                   "proxy_ip":None}},
+ "keyups":[],
+ "time":1.786947250366211,
+ }
+
+_REGISTRATION = [
+        {
+            "name": 12345,
+            "User_ID": "N8RAW",
+            "callsign": "N8RAW",
+            "node_frequency": "",
+            "node_tone": "",
+            "Location": "Jenison, MI",
+            "SiteName": "Jenison",
+            "Affiliation": "",
+            "regseconds":  _recent_regseconds(),
+            "access_webtransceiver": "1",
+            "access_telephoneportal": "0"
+        }
+    ]
 
 class TestCheckNodeStatusReginfo(unittest.TestCase):
     """Tests focused on the node_reginfo guard (None / empty list)."""
@@ -135,11 +251,10 @@ class TestCheckNodeStatusReginfo(unittest.TestCase):
 
     def test_reginfo_single_element_not_treated_as_empty(self):
         """A list with one element is valid and must pass the empty-list guard."""
-        reginfo = [{"regseconds": _recent_regseconds()}]
         (n_errors, _), _, _ = self._run(
             bindport=4569,
             stats=_VALID_STATS,
-            reginfo=reginfo,
+            reginfo=_REGISTRATION,
         )
         # UDP port matches, reg is recent → no errors
         self.assertEqual(n_errors, 0)
