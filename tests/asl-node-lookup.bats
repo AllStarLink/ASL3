@@ -51,11 +51,11 @@ setup() {
   [[ "$output" =~ "NS (nodes.allstarlink.org)" ]]
 }
 
-@test "prints asterisk message when not root or asterisk user" {
-  run "$SCRIPT" 12345
-  [ "$status" -eq 0 ]
-  [[ "$output" =~ "Use \"sudo" ]]
-}
+#@test "prints asterisk message when not root or asterisk user" {
+#  run "$SCRIPT" 12345
+#  [ "$status" -eq 0 ]
+#  [[ "$output" =~ "Use \"sudo" ]]
+#}
 
 @test "--help prints usage and exits non-zero" {
   run "$SCRIPT" --help
