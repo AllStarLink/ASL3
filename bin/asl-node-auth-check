@@ -473,11 +473,16 @@ def check_node_status(node):
         n_errors += 1
 
     node_reginfo = get_node_regtime(node)
-    if node_reginfo is None:
+    if node_reginfo is None or len(node_reginfo) == 0:
         print_error(f"No registration information available.")
         n_errors += 1
         return n_errors, n_warnings
     reg_since = node_reginfo[0].get('regseconds')
+    if reg_since is None:
+        print_error(f"Registration information is missing 'regseconds' field.")
+        n_errors += 1
+        return n_errors, n_warnings
+
     reg_since_dt = datetime.fromtimestamp(reg_since, UTC)
     reg_since_str = reg_since_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
     if reg_since_dt < datetime.now(UTC) - timedelta(minutes=10):
