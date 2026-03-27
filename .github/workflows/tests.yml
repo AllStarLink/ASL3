@@ -49,6 +49,12 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y bats
+      - name: Create asterisk mock
+        run: |
+          mkdir -p /usr/sbin/
+          echo "#!/bin/bash" > /usr/sbin/asterisk
+          echo "echo 'Asterisk mock called with: \$@'" >> /usr/sbin/asterisk
+          chmod +x /usr/sbin/asterisk
 
       - name: Run BATS tests
         run: |
