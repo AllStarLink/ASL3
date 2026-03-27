@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [ "**" ]
   push:
-    branches: [ "main" ]
+    branches: [ "develop" ]
 
 jobs:
   test:
@@ -33,7 +33,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
           # Ensure pytest exists:
-          pip install pytest
+          pip install pytest sympy requests
 
       - name: Run tests
         run: |
