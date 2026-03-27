@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import glob
 import ipaddress
 import os
 import pwd
@@ -104,11 +105,12 @@ def extract_registration_values(filename, regtype):
             if m:
                 value = re.sub(r'\s+', '', m.group(1))  # remove all whitespace
                 regtuple = parse_registration_string(value)
-                regtuple = regtuple + (regtype,)
                 if regtuple is None:
                     print_error(f"Invalid registration >> {value} << in {filename}")
                     continue
-                results.append(regtuple)
+                else:
+                    regtuple = regtuple + (regtype,)
+                    results.append(regtuple)
     return results
 
 
@@ -144,22 +146,102 @@ def get_rpt_nodes(conf_path="/etc/asterisk/rpt.conf"):
     Returns a list of node numbers that appear as:
         [12345](node-main)
     ignoring whitespace.
+
+    Also follows #tryinclude <filename> directives by scanning the entire file
+    for tryincludes first, then scanning for nodes.
     """
-    pattern = re.compile(r"^\[\s*(\d+)\s*\]", re.IGNORECASE)
+
+    node_pattern = re.compile(r"^\[\s*(\d+)\s*\]", re.IGNORECASE)
+
+    # Matches:
+    #   #tryinclude <file>
+    #   #include <file>
+    # Allows whitespace around tokens.
+    include_pattern = re.compile(
+        r"^\s*#\s*(tryinclude|include)\s+(\S+)",
+        re.IGNORECASE
+    )
+
     nodes = []
+    seen_nodes = set()
+    seen_files = set()
 
-    with open(conf_path, "r") as f:
-        for line in f:
-            line = line.strip()
-            m = pattern.search(line)
-            if m:
-                if int(m.group(1)) > 1999:
-                    nodes.append(m.group(1))
-                else:
-                    print_info(f"Skipping evaluation of private node {m.group(1)}")
+    def resolve_includes(base_file, include_target):
+        """Resolve relative paths from base_file dir and expand globs."""
+        target = include_target.strip()
 
+        if not os.path.isabs(target):
+            target = os.path.join(os.path.dirname(base_file), target)
+
+        # Expand globs like /etc/asterisk/rpt*.conf
+        matches = sorted(glob.glob(target))
+        return matches
+
+    def scan_file(path):
+        path = os.path.realpath(path)
+        if path in seen_files:
+            return
+        seen_files.add(path)
+
+        try:
+            with open(path, "r") as f:
+                # Read all lines so we can do a true "scan entire file" pass
+                lines = f.readlines()
+        except FileNotFoundError:
+            print_info(f"Config file not found: {path}")
+            return
+        except PermissionError:
+            print_info(f"Permission denied reading: {path}")
+            return
+        except OSError as e:
+            print_info(f"Error reading {path}: {e}")
+            return
+
+        # ------------------------------------------------------------
+        # PASS 1: scan the ENTIRE file for includes (tryinclude/include)
+        # ------------------------------------------------------------
+        include_paths = []
+
+        for raw in lines:
+            line = raw.strip()
+            m = include_pattern.match(line)
+            if not m:
+                continue
+
+            kind = m.group(1).lower()      # tryinclude / include
+            inc  = m.group(2).strip()      # filename inside <...>
+            resolved = resolve_includes(path, inc)
+            if not resolved:
+                # tryinclude is allowed to be missing; include usually isn't
+                if kind == "include":
+                    print_info(f"Include target not found: {inc} (from {path})")
+                continue
+
+            include_paths.extend(resolved)
+
+        # Recurse into includes AFTER we've found them all
+        for inc_path in include_paths:
+            scan_file(inc_path)
+
+        # ------------------------------------------------------------
+        # PASS 2: scan the ENTIRE file for node section headers
+        # ------------------------------------------------------------
+        for raw in lines:
+            line = raw.strip()
+            m = node_pattern.match(line)
+            if not m:
+                continue
+
+            node = m.group(1)
+            if int(node) > 1999:
+                if node not in seen_nodes:
+                    nodes.append(node)
+                    seen_nodes.add(node)
+            else:
+                print_info(f"Skipping evaluation of private node {node}")
+
+    scan_file(conf_path)
     return nodes
-
 
 def check_node_formedness(node,reghost):
     """ validate node and reghost """
