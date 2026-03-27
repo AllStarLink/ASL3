@@ -439,7 +439,7 @@ def get_node_regtime(node):
     Returns the parsed JSON (dict/list) or None on failure.
     """
     try:
-        url = f"https://www.allstarlink.org/nodelist/nodelist-server.php?inactives=1&node={node}"
+        url = f"https://www.allstarlink.org/nodelist/nodelist-server.php?s={node}"
         response = requests.get(url, timeout=5)
         response.raise_for_status()  # raises for 4xx/5xx
         return response.json()
@@ -461,8 +461,8 @@ def check_node_status(node):
         print_error(f"No stats available... cannot continue this check set")
         n_warnings += 1
         return n_errors, n_warnings
-
-    stats_udpport = stats['stats']['user_node']['server']['udpport']
+    
+    stats_udpport = stats['node']['server']['udpport']
     if stats_udpport == bind_udpport:
         print_ok(f"Server-set UDP port matches bindport in iax.conf")
     else:
@@ -473,7 +473,11 @@ def check_node_status(node):
         n_errors += 1
 
     node_reginfo = get_node_regtime(node)
-    reg_since = node_reginfo[0]['regseconds']
+    if node_reginfo is None:
+        print_error(f"No registration information available.")
+        n_errors += 1
+        return n_errors, n_warnings
+    reg_since = node_reginfo[0].get('regseconds')
     reg_since_dt = datetime.fromtimestamp(reg_since, UTC)
     reg_since_str = reg_since_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
     if reg_since_dt < datetime.now(UTC) - timedelta(minutes=10):
