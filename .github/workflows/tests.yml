@@ -33,7 +33,7 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
           # Ensure pytest exists:
-          pip install pytest sympy
+          pip install pytest sympy requests shlex socket subprocess sys ipaddress glob pwd
 
       - name: Run tests
         run: |
