@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+# Pretend we are not the asterisk user
+if [[ "$1" == "-u" ]]; then
+  echo 9999
+else
+  /usr/bin/id "$@"
+fi
+
