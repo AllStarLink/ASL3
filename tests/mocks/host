@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+
+if [[ "$*" =~ "-t SRV" ]]; then
+  if [[ -n "$MOCK_NO_SRV" ]]; then
+    exit 0
+  fi
+  echo "_iax._udp.12345.nodes.allstarlink.org has SRV record 10 10 4569 12345.nodes.allstarlink.org."
+  exit 0
+fi
+
+if [[ "$*" =~ "-t A" ]]; then
+  echo "12345.nodes.allstarlink.org has address 192.0.2.10"
+  exit 0
+fi
+
+if [[ "$*" =~ "-t TXT" ]]; then
+  echo '12345.nodes.allstarlink.org descriptive text "Example node description"'
+  exit 0
+fi
+
+if [[ "$*" =~ "-t SOA" ]]; then
+  echo "nodes.allstarlink.org has SOA record ns1.example.org."
+  exit 0
+fi
+
+if [[ "$*" =~ "-t NS" ]]; then
+  echo "nodes.allstarlink.org name server ns1.example.org."
+  exit 0
+fi
+
+exit 0

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+if [[ "$1" == "-x" ]]; then
+  echo "radio@127.0.0.1"
+fi

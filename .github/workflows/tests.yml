@@ -9,7 +9,7 @@ on:
     branches: [ "main" ]
 
 jobs:
-  test:
+  test_python:
     runs-on: ubuntu-latest
 
     strategy:
@@ -38,3 +38,21 @@ jobs:
       - name: Run tests
         run: |
           pytest -q tests
+  test_shell_scripts:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Bats
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
+
+      - name: Run BATS tests
+        run: |
+          # Ensure bash tests are executable
+          chmod +x tests/*.bats
+          # Run each bash test script
+          bats tests/*.bats
