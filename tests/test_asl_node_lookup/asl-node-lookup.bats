@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 setup() {
-  SCRIPT="$BATS_TEST_DIRNAME/../bin/asl-node-lookup"
+  SCRIPT="$BATS_TEST_DIRNAME/../../bin/asl-node-lookup"
 
   # Inject mocks
   PATH="$BATS_TEST_DIRNAME/mocks:$PATH"
