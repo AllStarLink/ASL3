@@ -34,7 +34,7 @@ def _load_script():
 
 
 _mod = _load_script()
-check_node_status = _mod.check_node_status
+check_node_status = _mod
 
 
 # ---------------------------------------------------------------------------
