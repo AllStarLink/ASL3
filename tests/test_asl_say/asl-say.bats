@@ -61,7 +61,6 @@ teardown() {
 @test "prints time audio sequence for 'time'" {
   run "$SCRIPT" -n 12345 -w time
   [ "$status" -eq 0 ]
-  echo ${output}
   [[ "$output" =~ rpt/thetimeis ]]
   [[ "$output" =~ digits/ ]]
   [[ "$output" =~ p-m|a-m ]]
