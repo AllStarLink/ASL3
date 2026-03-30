@@ -53,6 +53,6 @@ jobs:
       - name: Run BATS tests
         run: |
           # Ensure bash tests are executable
-          chmod +x tests/*.bats
+          find tests -type f -name '*.bats' -exec chmod +x {} +
           # Run each bash test script
           find . -type f -name '*.bats' -print0 | xargs -0 bats
