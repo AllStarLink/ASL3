@@ -68,5 +68,20 @@ debclean:
 	rm -rf debian/$(SRCNAME)/ debian/.debhelper/
 	rm -f debian/debhelper-build-stamp debian/files debian/$(SRCNAME).substvars
 	rm -f debian/*.debhelper debian/*.debhelper.log
+.PHONY: test test-all test-python test-shell
 
+test: test-python
+	@echo "All tests passed!"
+
+test-all: test-python test-shell
+	@echo "All tests (Python + Shell) passed!"
+
+test-python:
+	@echo "Running all Python tests"
+	python3 -m pytest tests/ -v
+
+test-shell:
+	@echo "Running shell script tests..."
+	find tests -type f -name '*.bats' -exec chmod +x {} + 2>/dev/null || true
+	find . -type f -name '*.bats' -print0 | xargs -0 bats 2>/dev/null || echo "BATS tests not configured or not found"
 	

@@ -10,7 +10,7 @@ from unittest.mock import patch, MagicMock
 import os
 
 _SCRIPT_PATH = os.path.join(
-    os.path.dirname(__file__), "..", "bin", "asl-play-arn"
+    os.path.dirname(__file__), "..", "..", "bin", "asl-play-arn"
 )
 
 def _load_play_arn():

@@ -33,11 +33,11 @@ jobs:
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
           # Ensure pytest exists:
-          pip install pytest sympy requests
+          pip install pytest sympy requests python3-pytest-cov
 
       - name: Run tests
         run: |
-          pytest -q tests
+          pytest -q tests/ --cov=bin/
   test_shell_scripts:
     runs-on: ubuntu-latest
 
@@ -55,4 +55,4 @@ jobs:
           # Ensure bash tests are executable
           chmod +x tests/*.bats
           # Run each bash test script
-          bats tests/*.bats
+          find . -type f -name '*.bats' -print0 | xargs -0 bats
