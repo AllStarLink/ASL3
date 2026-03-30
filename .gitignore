@@ -6,3 +6,5 @@ debian/asl3/
 debian/debhelper-build-stamp
 debian/files
 
+tests/__pycache__/
+bin/__pycache__/
