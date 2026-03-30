@@ -131,12 +131,15 @@ teardown() {
 }
 
 @test "date argument affects output" {
-  run1=$("$SCRIPT" -n 12345 -w time -d "2025-03-28 14:30:45" 2>&1)
-  run2=$("$SCRIPT" -n 12345 -w time -d "2025-03-28 23:59:59" 2>&1)
-  # Different times should potentially produce different output
-  # (though this is a simple check)
+  run "$SCRIPT" -n 12345 -w time -d "2025-03-28 14:30:45"
+  [ "$status" -eq 0 ]
+  run1="$output"
+  run "$SCRIPT" -n 12345 -w time -d "2025-03-28 23:59:59"
+  [ "$status" -eq 0 ]
+  run2="$output"
   [ -n "$run1" ]
   [ -n "$run2" ]
+  [ "$run1" != "$run2" ]
 }
 
 @test "help option shows usage" {
