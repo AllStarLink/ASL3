@@ -186,6 +186,11 @@ function usage(){
 	exit 1
 }
 
+# If no command-line arguments
+if (( $# == 0 )); then
+  usage
+fi
+
 while getopts "n:w:d:" opt; do
 	case ${opt} in
 		n)	NODE="${OPTARG}" ;;
@@ -198,9 +203,14 @@ while getopts "n:w:d:" opt; do
 done
 shift $((OPTIND-1))
 
+if case $NODE in (*[!0-9]*|'') true;; (*) false;; esac; then
+	echo "-n {NODE} must be a number" 1>&2
+	exit 1
+fi
+
 if [ -z "${NODE}" ] || [ ${NODE} -lt 1 ]; then
 	echo "-n {NODE} must be a number greater than 0" 1>&2
-	exit
+	exit 1
 fi
 
 case ${WHAT} in
