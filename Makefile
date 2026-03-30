@@ -83,5 +83,10 @@ test-python:
 test-shell:
 	@echo "Running shell script tests..."
 	find tests -type f -name '*.bats' -exec chmod +x {} + 2>/dev/null || true
-	find . -type f -name '*.bats' -print0 | xargs -0 bats 2>/dev/null || echo "BATS tests not configured or not found"
+	if find . -type f -name '*.bats' -print0 | xargs -0 bats; then \
+	    echo "BATS tests passed"; \
+	else \ 
+	    echo "BATS tests not configured or not found"; \
+		exit 1; \
+	fi
 	

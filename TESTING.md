@@ -12,7 +12,7 @@ make test
 make test-python
 
 # Run specific test file
-pytest tests/test_asl_node_auth_check_core.py -v
+pytest tests/test_asl_node_auth_check/test_asl_node_auth_check_core.py -v
 
 # Run tests with coverage
 pytest tests/ --cov=bin/
@@ -70,6 +70,7 @@ if __name__ == "__main__":
 Tests require:
 - Python 3.11+
 - pytest
+- pytest-cov
 - sympy
 - requests
 - unittest.mock (standard library)
