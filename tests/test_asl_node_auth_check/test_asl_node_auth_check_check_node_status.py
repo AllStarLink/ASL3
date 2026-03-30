@@ -14,9 +14,6 @@ import unittest
 from datetime import datetime, timedelta, UTC
 from unittest.mock import MagicMock, patch
 
-from sympy import false
-
-
 # ---------------------------------------------------------------------------
 # Load bin/asl-node-auth-check as a module (no .py extension)
 # ---------------------------------------------------------------------------
@@ -60,7 +57,7 @@ _VALID_STATS = {"stats":{"id":51941,
                   "apprptvers":"3.8.3",
                   "timeouts":"0",
                   "links":["287893"],
-                  "keyed":false,
+                  "keyed":False,
                   "time":"1774631643",
                   "seqno":"1551",
                   "nodes":"T287893",
@@ -76,7 +73,7 @@ _VALID_STATS = {"stats":{"id":51941,
                                   "iptime":"2024-03-24 15:34:42",
                                   "node_frequency":"31269 Link WMTG",
                                   "node_tone":"TS2 CC1",
-                                  "node_remotebase":false,
+                                  "node_remotebase":False,
                                   "node_freqagile":"0",
                                   "callsign":"WM8TG\\DMR",
                                   "access_reverseautopatch":"0",
@@ -104,7 +101,7 @@ _VALID_STATS = {"stats":{"id":51941,
                        "iptime":"2026-03-18 18:16:29",
                        "node_frequency":"",
                        "node_tone":"",
-                       "node_remotebase":false,
+                       "node_remotebase":False,
                        "node_freqagile":"0",
                        "callsign":"WB6NIL",
                        "access_reverseautopatch":"0",
@@ -133,7 +130,7 @@ _VALID_STATS = {"stats":{"id":51941,
          "iptime":"2026-03-18 18:16:29",
          "node_frequency":"",
          "node_tone":"",
-         "node_remotebase":false,
+         "node_remotebase":False,
          "node_freqagile":"0",
          "callsign":"WB6NIL",
          "access_reverseautopatch":"0",

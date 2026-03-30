@@ -71,13 +71,12 @@ Tests require:
 - Python 3.11+
 - pytest
 - pytest-cov
-- sympy
 - requests
 - unittest.mock (standard library)
 
 Install with:
 ```bash
-pip install pytest sympy requests
+pip install pytest requests
 ```
 
 ## Troubleshooting

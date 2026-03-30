@@ -7,3 +7,4 @@ debian/debhelper-build-stamp
 debian/files
 
 __pycache__/
+.coverage
