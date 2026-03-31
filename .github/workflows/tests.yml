@@ -37,7 +37,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pytest -q tests/ --cov=bin/
+          pytest -q tests/ --cov=bin/ --cov-report term-missing
   test_shell_scripts:
     runs-on: ubuntu-latest
 
