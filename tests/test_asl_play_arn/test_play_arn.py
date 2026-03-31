@@ -24,7 +24,6 @@ def _load_play_arn():
 
     # Make module importable for patch()
     sys.modules["play_arn"] = module
-    print("DEBUG datetime =", module.datetime, type(module.datetime))
     return module
 
 
@@ -48,7 +47,6 @@ def play_arn_runner():
             with contextlib.redirect_stderr(buf):
                 try:
                     runpy.run_module("play_arn", run_name="__main__", alter_sys=True)
-                    #play_arn.main()
                 except SystemExit as e:
                     return buf.getvalue(), str(e)
                 return buf.getvalue(), ""
@@ -172,7 +170,6 @@ def test_conversion_sox_failed(play_arn_runner):
         ),
     ]
     _, exit_mesg = run(["asl-play-arn", "--node", "1234"])
-    print(patch["subprocess_run"].call_args_list)
     assert "error: command: sox -v 0.7 " in exit_mesg.lower()
 
 def test_conversion_ast_play_failed(play_arn_runner):
@@ -203,8 +200,6 @@ def test_conversion_ast_play_failed(play_arn_runner):
     ]
     
     _, exit_mesg = run(["asl-play-arn", "--node", "1234"])    
-    print(patch["subprocess_run"].call_args_list)
-    print(exit_mesg)
     assert "error: command: /usr/sbin/asterisk -rx rpt playback 1234 " in exit_mesg.lower()
 
 def test_keyboard_interrupt(play_arn_runner):
