@@ -2,7 +2,6 @@
 
 import argparse
 import logging
-import logging.handlers
 import os
 import pwd
 import re
@@ -82,7 +81,7 @@ def main():
             mp3_out.write(r.content)
         else:
             raise Exception(
-                f"Failed to retrive ARN file with error {r.status_code}")
+                f"Failed to retrieve ARN file with error {r.status_code}")
 
         # Convert to WAV since sox on Allstar doesn't have .mp3 support
         wav_out = tempfile.NamedTemporaryFile(suffix=".wav")
@@ -141,7 +140,7 @@ def main():
         )
         if res.returncode != 0:
             raise Exception("COMMAND: {0:s}\n\n OUTPUT:\n{1:s}".format(
-                astplay, res.stdout.decode()))
+                " ".join(astplay), res.stdout.decode()))
 
         # sleep for 15 seconds so the playback starts before the
         # deconstructor deletes the temporary file for ulaw_out
