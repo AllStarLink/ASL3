@@ -56,6 +56,28 @@ class TestGetNodePing(unittest.TestCase):
             result = get_node_ping("12345")
             self.assertEqual(result, ping_response)
 
+    def test_get_node_ping_uses_expected_url_and_timeout(self):
+        """get_node_ping should call requests.get with the node parameter and timeout."""
+        ping_response = {
+            "ipv4": {
+                "status": "ok",
+                "rc": 0,
+                "pingms": 10
+            }
+        }
+
+        with patch.object(_mod.requests, 'get') as mock_get:
+            mock_response = MagicMock()
+            mock_response.json.return_value = ping_response
+            mock_response.status_code = 200
+            mock_response.raise_for_status = MagicMock()
+            mock_get.return_value = mock_response
+
+            result = get_node_ping("12345")
+
+            self.assertEqual(result, ping_response)
+            mock_get.assert_called_once_with("https://nodeping.allstarlink.org?node=12345", timeout=5)
+
     def test_get_node_ping_timeout(self):
         """Network timeout returns None."""
         with patch.object(_mod.requests, 'get', side_effect=requests.Timeout("Connection timeout")):
