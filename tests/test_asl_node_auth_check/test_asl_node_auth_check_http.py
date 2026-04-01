@@ -105,6 +105,19 @@ register.allst  99999           44.15.4.15:4569    104      Registered
             self.assertEqual(host, "register.allst")
             self.assertEqual(perceived, "44.15.4.13:4569")
 
+    def test_find_http_registration_malformed_line_ignored(self):
+        """Malformed registration lines with too few columns are ignored."""
+        http_output = """
+Host            Username        Perceived IP:Port  Refresh  State
+register.allst  12345           44.15.4.13:4569
+2 HTTP registrations.
+        """
+        with patch.object(_mod.subprocess, 'check_output', return_value=http_output.strip()):
+            host, perceived, state = find_http_registration("12345")
+            self.assertIsNone(host)
+            self.assertIsNone(perceived)
+            self.assertIsNone(state)
+
 
 class TestCheckHttpRegistration(unittest.TestCase):
     """Tests for check_http_registration() function."""

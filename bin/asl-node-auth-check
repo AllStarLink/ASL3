@@ -462,8 +462,23 @@ def check_node_status(node):
         n_warnings += 1
         return n_errors, n_warnings
     
-    stats_udpport = stats['node']['server']['udpport']
-    if stats_udpport == bind_udpport:
+    stats_node = stats.get('node') if isinstance(stats, dict) else None
+    if not isinstance(stats_node, dict):
+        print_error("Node stats are unavailable in the response.")
+        n_errors += 1
+        return n_errors, n_warnings
+
+    stats_server = stats_node.get('server')
+    if not isinstance(stats_server, dict):
+        print_error("Node server stats are unavailable in the response.")
+        n_errors += 1
+        return n_errors, n_warnings
+
+    stats_udpport = stats_server.get('udpport')
+    if stats_udpport is None:
+        print_error("UDP port is missing from node stats.")
+        n_errors += 1
+    elif stats_udpport == bind_udpport:
         print_ok(f"Server-set UDP port matches bindport in iax.conf")
     else:
         print_error(f"Registered UDP port does not match bindport in iax.conf: {stats_udpport} != {bind_udpport}")
@@ -491,8 +506,12 @@ def check_node_status(node):
     else:
         print_ok(f"Node registration within 10 minutes: {reg_since_str}")
 
-    iptime = stats['node']['iptime']
-    print_info(f"Last time IP changed was {iptime} UTC")
+    iptime = stats_node.get('iptime')
+    if iptime:
+        print_info(f"Last time IP changed was {iptime} UTC")
+    else:
+        print_warning("Last time IP change is unavailable in node stats")
+        n_warnings += 1
 
     return n_errors, n_warnings
 
@@ -766,7 +785,9 @@ def main():
             print_ok(f"No problems detected with node {node}")
 
         print("")
-
-if __name__ == "__main__":
+def entrypoint():
     require_root_or_asterisk()
     main()
+    
+if __name__ == "__main__":
+    entrypoint()
