@@ -620,8 +620,7 @@ class TestGetNodeStats:
             _module.get_node_stats("12345")
             mock_get.assert_called_once()
             args, kwargs = mock_get.call_args
-            assert "12345" in args[0]
-            assert "stats.allstarlink.org" in args[0]
+            assert "https://stats.allstarlink.org/api/stats/12345" == args[0]
 
 
 class TestGetNodeRegtime:
