@@ -40,7 +40,7 @@ _module = _load_script()
 
 def run():
     buf = io.StringIO()
-    with patch.dict(sys.modules):
+    with patch.dict(sys.modules), patch('sys.stdout', buf):
         try:
             _module.entrypoint()
         except SystemExit as e:
@@ -83,7 +83,7 @@ class TestMain:
     def test_main_valid_user(self, user, uid, gid):
         """Valid user asterisk or root allows script to run."""
         with patch("os.geteuid", return_value=0), \
-             patch("pwd.getpwnam", return_value=unittest.mock.MagicMock(pw_uid=uid, pw_gid=gid, pw_name=user)), \
+             patch("pwd.getpwuid", return_value=unittest.mock.MagicMock(pw_uid=uid, pw_gid=gid, pw_name=user)), \
              patch("asl_node_auth_check.main", return_value=None):
                  
             _, ex = run()
@@ -195,7 +195,7 @@ class TestGetRptNodesDetailedCoverage:
         main_file = os.path.join(main_dir, "main.conf")
         sub_file = os.path.join(sub_dir, "sub.conf")
 
-        main_content = f"""
+        main_content = """
 [12345] (node-main)
 
 #include subdir/sub.conf
@@ -376,7 +376,7 @@ register.allstarlink.org n   12345      192.168.1.1:4569 105      Registered
 register.allstarlink.org n   12345      192.168.1.1:4569 105      Request Sent
 1 IAX2 registrations."""
         with patch('subprocess.check_output', return_value=output):
-            host, perceived, state = _module.find_iax_registration("12345")
+            _, _, state = _module.find_iax_registration("12345")
             assert state == "Request Sent"
 
     def test_iax_registration_not_found(self):
