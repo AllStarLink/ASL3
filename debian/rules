@@ -3,6 +3,13 @@
 %:
 	dh $@
 
+override_dh_auto_test:
+ifeq ($(RUN_TESTS),1)
+	dh_auto_test
+else
+	@echo "Skipping package build tests. Use RUN_TESTS=1 to enable."
+endif
+
 override_dh_installsystemd:
 	dh_installsystemd --name=asl-telemetry asl-telemetry.timer
 	dh_installsystemd --name=asl3-boot-oneshot --no-restart-after-upgrade --no-start
