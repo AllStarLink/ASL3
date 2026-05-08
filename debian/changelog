@@ -1,3 +1,21 @@
+asl3 (3.18-1) stable; urgency=medium
+
+  * asl-node-auth-check: node changed to s in lookup (#183)
+  * asl-node-auth-check: Handle missing nodes and add ability to follow #tryinclude (#184)
+  * asl-node-auth-check: Add a few more null checks (#185)
+  * CodeRabbit Generated Unit Tests: Add unit tests (#186)
+  * Add CI workflow for running tests with Python (#187)
+  * Change CI branch from 'main' to 'develop' (#188)
+  * Add shell script test platform (#189)
+  * Add test_play_arn() (#191)
+  * Refactor test into directories (#192)
+  * asl-say: Add tests (#193)
+  * 100% test coverage for asl-play-arn (#194)
+  * asl-node-auth-check: Tighten up key failures (#195)
+  * Add permissions to workflow (#196)
+
+ -- Allan Nathanson <wa3wco@arrl.net>  Thu, 07 May 2026 20:40:33 -0400
+
 asl3 (3.17-1) stable; urgency=medium
 
   * Remove Utilities Related to DAHDI (#181)
