@@ -3,7 +3,7 @@ exec_prefix ?= $(prefix)
 bin_prefix ?= $(exec_prefix)/bin
 mandir ?= $(prefix)/share/man
 
-BINS = $(filter-out Makefile $(wildcard *.md) tmp, $(wildcard *))
+BINS = $(filter-out Makefile tmp __pycache__ %.md, $(wildcard *))
 BINS_EXP = $(patsubst %, $(DESTDIR)$(bin_prefix)/%, $(BINS))
 
 MANS_SRC = $(wildcard *.1.md)

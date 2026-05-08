@@ -4,7 +4,7 @@
 SRCNAME = ASL3
 PKGNAME = asl3
 RELVER = 3.18
-DEBVER = 1
+DEBVER = 2
 RELPLAT ?= deb$(shell lsb_release -rs 2> /dev/null)
 
 BUILDABLES = \
@@ -27,7 +27,9 @@ default:
 
 install: $(ROOT_INSTALLABLES)
 	@echo DESTDIR=$(DESTDIR)
-	$(foreach dir, $(BUILDABLES), $(MAKE) -C $(dir) install;)
+	@for dir in $(BUILDABLES); do \
+		$(MAKE) -C $$dir install || exit $$?; \
+	done
 
 $(DESTDIR)$(docdir)/%: %
 	install -D -m 0644  $< $@
@@ -68,6 +70,7 @@ debclean:
 	rm -rf debian/$(SRCNAME)/ debian/.debhelper/
 	rm -f debian/debhelper-build-stamp debian/files debian/$(SRCNAME).substvars
 	rm -f debian/*.debhelper debian/*.debhelper.log
+
 .PHONY: test test-all test-python test-shell
 
 test: test-python
