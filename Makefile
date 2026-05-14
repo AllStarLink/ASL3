@@ -3,13 +3,14 @@
 #
 SRCNAME = ASL3
 PKGNAME = asl3
-RELVER = 3.18
-DEBVER = 2
+RELVER = 3.18.1
+DEBVER = 1
 RELPLAT ?= deb$(shell lsb_release -rs 2> /dev/null)
 
 BUILDABLES = \
 	apt.conf.d \
 	bin \
+	broadcastify \
 	etc \
 	keys \
 	polkit \
