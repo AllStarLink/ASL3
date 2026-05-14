@@ -12,7 +12,7 @@ StartLimitBurst=5
 Type=simple
 User=asterisk
 Group=asterisk
-ExecStart=/usr/local/bin/asl-broadcastify %i
+ExecStart=/usr/bin/asl-broadcastify %i
 Restart=always
 RestartSec=5
 
