@@ -1,3 +1,9 @@
+asl3 (3.18.2-1) stable; urgency=medium
+
+  * This is a beta package for broadcastify improvements
+
+ -- Helium <jason@mfamily.org>  Thu, 14 May 2026 17:46:43 -0400
+
 asl3 (3.18-1) stable; urgency=medium
 
   * asl-node-auth-check: node changed to s in lookup (#183)
