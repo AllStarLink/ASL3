@@ -1,0 +1,27 @@
+[Unit]
+Description=Broadcastify stream encoder for node %i
+After=asterisk.service network-online.target
+Wants=network-online.target
+PartOf=asterisk.service
+
+# Don't restart forever if the config is broken
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=asterisk
+Group=asterisk
+ExecStart=/usr/local/bin/asl-broadcastify %i
+Restart=always
+RestartSec=5
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/asterisk
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,28 @@
+# Broadcastify stream configuration for node 1999
+# This file must be named NODE.conf - e.g. 1999.conf
+
+# FIFO path (where rpt_audio_writer is configured in outstreamcmd=)
+# This needs to be readable by the asterisk user.
+# Replace "NODE" with the node number.
+FIFO=/var/lib/asterisk/NODE.fifo
+
+# Icecast server details
+# This is configuration found in your "Feed Technical Details"
+# section of your configured Broadcastify Stream
+ICECAST_HOST=audio9.radioreference.com
+ICECAST_PORT=80
+ICECAST_MOUNT=/abcdefg
+ICECAST_USER=source
+ICECAST_PASSWORD=abcd1234
+
+# Stream metadata - This can be wahtever you want within quotes
+STREAM_NAME=""
+STREAM_DESCRIPTION=""
+STREAM_URL=""
+
+# Don't change these unless you know why you're changing it
+STREAM_PUBLIC=1
+STREAM_GENRE="Amateur Radio"
+INPUT_SAMPLERATE=8000
+INPUT_CHANNELS=1
+OUTPUT_BITRATE=16k
