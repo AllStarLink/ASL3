@@ -10,10 +10,10 @@ Vcs-Git: https://github.com/AllStarLink/ASL3.git
 Rules-Requires-Root: binary-targets
 
 Package: asl3
-Architecture: all
+Architecture: any
 Depends: ${misc:Depends}, asl3-asterisk, asl3-menu, lsb-release, 
   bind9-dnsutils, uuid, curl, lame, sox, whiptail, python3-serial,
-  python3-requests
+  python3-requests, ffmpeg
 Breaks: asl3-pi-appliance (<< 1.8.0)
 Suggests: allmon3, asl3-update-nodelist
 Description: AllStarLink 3

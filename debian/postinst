@@ -24,6 +24,15 @@ function do_configure() {
 		echo "options snd_usb_audio lowlatency=1" > \
 			/etc/modprobe.d/asl3-snd-usb-audio.conf
 	fi
+
+	if getent passwd asterisk >/dev/null; then
+		chown -R asterisk:asterisk /etc/asterisk/broadcastify/
+		chmod 750 /etc/asterisk/broadcastify/
+	fi
+
+#DEBHELPER#
+
+exit 0
 }
 
 case "$1" in

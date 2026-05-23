@@ -1,0 +1,63 @@
+#!/bin/bash
+#
+# Usage: broadcastify <node_id>
+# Reads /etc/asterisk/broadcastify/<node_id>.conf and streams audio
+# from the configured FIFO to the configured icecast mount.
+
+set -e
+
+NODE_ID="${1:?Usage: $0 <node_id>}"
+CONFIG="/etc/asterisk/broadcastify/${NODE_ID}.conf"
+
+if [ ! -r "$CONFIG" ]; then
+    echo "Cannot read config: $CONFIG" >&2
+    exit 1
+fi
+
+# shellcheck source=/dev/null
+. "$CONFIG"
+
+# Validate required values
+: "${FIFO:?FIFO not set in $CONFIG}"
+: "${ICECAST_HOST:?ICECAST_HOST not set in $CONFIG}"
+: "${ICECAST_PORT:?ICECAST_PORT not set in $CONFIG}"
+: "${ICECAST_MOUNT:?ICECAST_MOUNT not set in $CONFIG}"
+: "${ICECAST_USER:?ICECAST_USER not set in $CONFIG}"
+: "${ICECAST_PASSWORD:?ICECAST_PASSWORD not set in $CONFIG}"
+
+# Sensible defaults
+INPUT_SAMPLERATE="${INPUT_SAMPLERATE:-8000}"
+INPUT_CHANNELS="${INPUT_CHANNELS:-1}"
+OUTPUT_BITRATE="${OUTPUT_BITRATE:-16k}"
+STREAM_NAME="${STREAM_NAME:-app_rpt stream}"
+STREAM_DESCRIPTION="${STREAM_DESCRIPTION:-}"
+STREAM_GENRE="${STREAM_GENRE:-Amateur Radio}"
+STREAM_URL="${STREAM_URL:-}"
+STREAM_PUBLIC="${STREAM_PUBLIC:-1}"
+
+# Ensure FIFO exists as a FIFO
+if [ ! -p "$FIFO" ]; then
+    [ -e "$FIFO" ] && rm -f "$FIFO"
+    mkfifo -m 660 "$FIFO"
+fi
+
+# Background holder so ffmpeg never sees EOF when app_rpt is idle
+sleep infinity > "$FIFO" &
+HOLDER_PID=$!
+trap "kill $HOLDER_PID 2>/dev/null" EXIT INT TERM
+
+# Brief settle so the holder's open() completes
+sleep 0.1
+
+exec ffmpeg -nostdin -hide_banner -loglevel warning \
+    -f s16le -ar "$INPUT_SAMPLERATE" -ac "$INPUT_CHANNELS" -i "$FIFO" \
+    -c:a libmp3lame -b:a "$OUTPUT_BITRATE" \
+    -content_type audio/mpeg \
+    -legacy_icecast 1 \
+    -ice_name "$STREAM_NAME" \
+    -ice_description "$STREAM_DESCRIPTION" \
+    -ice_genre "$STREAM_GENRE" \
+    -ice_url "$STREAM_URL" \
+    -ice_public "$STREAM_PUBLIC" \
+    -f mp3 \
+    "icecast://${ICECAST_USER}:${ICECAST_PASSWORD}@${ICECAST_HOST}:${ICECAST_PORT}${ICECAST_MOUNT}"

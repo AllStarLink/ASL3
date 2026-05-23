@@ -25,6 +25,8 @@ on:
         type: choice
         options:
           - amd64
+          - arm64
+
 
 env:
   APTLY_API_USER: ${{secrets.APTLY_API_USER}}
