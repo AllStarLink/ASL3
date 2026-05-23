@@ -2,12 +2,12 @@
 # This file must be named NODE.conf - e.g. 1999.conf
 
 # FIFO path (where rpt_audio_writer is configured in outstreamcmd=)
-# This needs to be readable by the asterisk user.
+# This path needs to be readable by the asterisk user.
 # Replace "NODE" with the node number.
 FIFO=/var/lib/asterisk/NODE.fifo
 
 # Icecast server details
-# This is configuration found in your "Feed Technical Details"
+# This configuration info found in your "Feed Technical Details"
 # section of your configured Broadcastify Stream
 ICECAST_HOST=audio9.radioreference.com
 ICECAST_PORT=80
