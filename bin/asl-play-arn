@@ -108,7 +108,7 @@ def main():
         log.debug(f"mp3_out: {mp3_out.name}")
 
         # Retrieve the file to a temporary file
-        r = requests.get(_NEWS_URL)
+        r = requests.get(_NEWS_URL, timeout=(5, 30))
         if r:
             mp3_out.write(r.content)
         else:
