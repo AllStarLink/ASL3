@@ -1,12 +1,12 @@
 % asl-play-arn(1) ASL3 @@HEAD-DEVELOP@@
 % Jason McCormick
-% June 2024
+% October 2026
 
 # NAME
-asl-play-arn - Play Amateur Radio Newsline
+asl-play-arn - Play amateur radio news
 
 # SYNOPSIS
-usage: `asl-play-arn [-h] --node [ --when WHEN ] [ --debug ]
+usage: `asl-play-arn [-h] --node [ --when WHEN ] [ --source {arn,aan} ] [ --debug ]
 
 optional arguments:
 
@@ -17,10 +17,13 @@ optional arguments:
 * --when WHEN  When to play in 24 hour format NNNN - not specifying --when
   will result in the audo playing immediately
 
+* --source {arn,aan}  Use Amateur Radio Newsline (arn, default) or
+  ARRL Auto News (aan)
+
 * --debug      enable debug-level logging in syslog
 
 # DESCRIPTION
-Basic use is either immediately from the command line:
+Basic use is play immediately from the command line:
 
 ```
 allstar-play-arn --node 1999
@@ -53,7 +56,7 @@ systemctl enable asl-play-arn.timer
 ```
 
 # Asterisk/app\_rpt Configuration
-Usually the timeout timer in app_apt will be too short to accomodate the 
+Usually the timeout timer in app_apt will be too short to accomodate the
 playing of the full news file. The following commands can be added
 to `/etc/asterisk/rpt.conf` to enable and disable the TOT:
 
@@ -68,5 +71,5 @@ These appear as commented-out options in the stock `rpt.conf`
 Report bugs to https://github.com/AllStarLink/ASL3/issues
 
 # COPYRIGHT
-Copyright (C) 2024 Jason McCormick and AllStarLink
+Copyright (C) 2024-2026 Jason McCormick and AllStarLink
 under the terms of the AGPL v3.
