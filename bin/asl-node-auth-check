@@ -161,6 +161,13 @@ def compare_node_lists(configed_nodes, registrations_nodes):
 
     return identical, list(missing_from_config), list(missing_from_regs)
 
+def ip_version(ip):
+    """ 4 or 6 for an IP address string, None if it is not one """
+    try:
+        return ipaddress.ip_address(ip).version
+    except ValueError:
+        return None
+
 def reverse_dns(ip):
     """
     Perform a reverse DNS lookup for IPv4 or IPv6.
@@ -874,6 +881,24 @@ def check_remote_ip_perception():
     else:
         report("public_ip.iax_consensus", "error",
                "IAX IP probes DO NOT have consensus on the same perceived IP! CGNAT?", iax_data)
+
+    # Each protocol agrees with itself; compare the two (#198). The UDP
+    # probes are IPv4 only, so an IPv6 HTTP address says nothing about NAT.
+    if len(probed_ips_http) == 1 and len(probed_ips_iax) == 1:
+        http_ip = next(iter(probed_ips_http))
+        iax_ip = next(iter(probed_ips_iax))
+        data = {"http_ip": http_ip, "iax_ip": iax_ip}
+        if ip_version(http_ip) != 4 or ip_version(iax_ip) != 4:
+            report("public_ip.http_iax_match", "info",
+                   f"HTTP ({http_ip}) and IAX ({iax_ip}) perceived IPs not compared; not both IPv4",
+                   data)
+        elif http_ip != iax_ip:
+            report("public_ip.http_iax_match", "warning",
+                   f"HTTP and IAX probes perceive different IPs ({http_ip} != {iax_ip}); likely behind Carrier-Grade NAT (CGNAT)",
+                   data)
+        else:
+            report("public_ip.http_iax_match", "ok",
+                   f"HTTP and IAX probes perceive the same IP ({http_ip})", data)
 
 
 
