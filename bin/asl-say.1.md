@@ -21,7 +21,7 @@ on the node specified with `-n` as directed by `-w`
 **ip6** - The first global-scope IPv6 of the system
 
 # ExAMPLE
-`asl-day -n 1999 -w time` will speak the current time
+`asl-say -n 1999 -w time` will speak the current time
 on node 1999.
 
 # BUGS
