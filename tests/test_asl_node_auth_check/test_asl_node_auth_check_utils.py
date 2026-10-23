@@ -167,6 +167,33 @@ port = 5060
             finally:
                 os.unlink(f.name)
 
+    def test_get_iax_bindport_indented(self):
+        """Indented bindport lines are found (#207)."""
+        for conf_content, expected in (
+            ("[general]\n        bindport=4569\n        ;bindaddr=0.0.0.0\n", 4569),
+            ("[general]\n\tbindport = 4570\n", 4570),
+            ("[general]\n \t bindport=4571\n", 4571),
+        ):
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.conf', delete=False) as f:
+                f.write(conf_content)
+                f.flush()
+                try:
+                    self.assertEqual(get_iax_bindport(f.name), expected)
+                finally:
+                    os.unlink(f.name)
+
+    def test_get_iax_bindport_commented_out(self):
+        """A commented-out bindport line is not used."""
+        conf_content = "[general]\n    ;bindport=4570\n"
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.conf', delete=False) as f:
+            f.write(conf_content)
+            f.flush()
+            try:
+                with patch.object(_mod, 'print_info'):
+                    self.assertIsNone(get_iax_bindport(f.name))
+            finally:
+                os.unlink(f.name)
+
     def test_get_iax_bindport_not_found(self):
         """Missing bindport line prints error and returns None."""
         conf_content = """

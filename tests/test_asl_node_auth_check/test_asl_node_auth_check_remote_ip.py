@@ -277,5 +277,46 @@ class TestCheckRemoteIpPerception(unittest.TestCase):
             self.assertTrue(any("consensus" in msg for msg in ok_calls))
 
 
+class TestHttpIaxComparison(unittest.TestCase):
+    """HTTP and IAX perceived IPs are compared when each has consensus (#198)."""
+
+    def _run(self, http_ips, iax_ips):
+        _mod._report = _mod.Report()
+        _mod._report.begin_section("public_ip")
+        with patch.object(_mod, 'get_remote_ip_http', side_effect=http_ips), \
+             patch.object(_mod, 'udp_ping', side_effect=iax_ips), \
+             patch.object(_mod, 'print_ok'), \
+             patch.object(_mod, 'print_info'), \
+             patch.object(_mod, 'print_warning') as mock_warn, \
+             patch.object(_mod, 'print_error'):
+            check_remote_ip_perception()
+        found = [f for f in _mod._report.section["findings"] if f["id"] == "public_ip.http_iax_match"]
+        return found, [c.args[0] for c in mock_warn.call_args_list]
+
+    def test_different_ips_warn_cgnat(self):
+        found, warnings = self._run(["203.0.113.5"] * 3, ["100.64.1.2"] * 3)
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["level"], "warning")
+        self.assertEqual(found[0]["data"], {"http_ip": "203.0.113.5", "iax_ip": "100.64.1.2"})
+        self.assertTrue(any("CGNAT" in w for w in warnings))
+
+    def test_same_ip_is_ok(self):
+        found, warnings = self._run(["203.0.113.5"] * 3, ["203.0.113.5"] * 3)
+        self.assertEqual([f["level"] for f in found], ["ok"])
+        self.assertEqual(warnings, [])
+
+    def test_ipv6_http_not_compared(self):
+        """The UDP probes are IPv4 only; an IPv6 HTTP address is not a mismatch."""
+        found, warnings = self._run(["2001:db8::5"] * 3, ["203.0.113.5"] * 3)
+        self.assertEqual([f["level"] for f in found], ["info"])
+        self.assertEqual(warnings, [])
+
+    def test_no_comparison_without_consensus(self):
+        found, _ = self._run(["203.0.113.5", "203.0.113.6", "203.0.113.5"], ["100.64.1.2"] * 3)
+        self.assertEqual(found, [])
+        found, _ = self._run(["203.0.113.5"] * 3, [None, None, None])
+        self.assertEqual(found, [])
+
+
 if __name__ == "__main__":
     unittest.main()

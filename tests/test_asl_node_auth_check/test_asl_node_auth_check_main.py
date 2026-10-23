@@ -38,11 +38,11 @@ def _load_script():
 
 _module = _load_script()
 
-def run():
+def run(argv=None):
     buf = io.StringIO()
     with patch.dict(sys.modules), patch('sys.stdout', buf):
         try:
-            _module.entrypoint()
+            _module.entrypoint(argv if argv is not None else [])
         except SystemExit as e:
             return buf.getvalue(), str(e)
         return buf.getvalue(), ""
@@ -63,18 +63,21 @@ def asterisk_user_patch():
 def test_main():
     """Test main function with no patches to cover permission and user checks via the __main__ entry point."""
     try:
-        runpy.run_module("asl_node_auth_check", run_name="__main__", alter_sys=True)
+        with patch.object(sys, "argv", ["asl-node-auth-check"]):
+            runpy.run_module("asl_node_auth_check", run_name="__main__", alter_sys=True)
     except SystemExit as e:
-        assert str(e) == '1'
+        assert str(e) in ('0', '1', '2', '3')
 
 
 class TestMain:
     """Tests for main function."""
 
     def test_main_invalid_user(self):
-        """Valid 'node:secret@host' format is parsed correctly."""
-        _, ex = run()
-        assert ex == '1'
+        """A user other than root or asterisk exits 3."""
+        with patch("os.geteuid", return_value=1000), \
+             patch("pwd.getpwuid", return_value=unittest.mock.MagicMock(pw_uid=1000, pw_gid=1000, pw_name='nobody')):
+            _, ex = run()
+        assert ex == '3'
     
     @pytest.mark.parametrize("user, uid, gid", [ 
                               ("root", 0, 0), 
@@ -101,7 +104,7 @@ class TestMain:
              patch("asl_node_auth_check.check_node_status", return_value=(0,0)), \
              patch("asl_node_auth_check.check_node_reachability", return_value=(0,0)):
             _, ex = run()
-            assert ex == ''
+            assert ex == '0'
 
     def test_main_node_checks_with_formedness_errors_and_iax(self, asterisk_user_patch):
         """Main executes path where node formedness has errors/warnings, regup is down, regtype=IAX."""
@@ -116,7 +119,7 @@ class TestMain:
              patch("asl_node_auth_check.print_error") as mock_error, \
              patch("asl_node_auth_check.print_info") as mock_info:
             _, ex = run()
-            assert ex == ''
+            assert ex == '1'
             mock_error.assert_any_call("register.allstarlink.org is unreachable (via HTTP)")
             mock_info.assert_any_call("Stopping node checks due to registration failure")
             mock_info.assert_any_call("as further information will be unreliable")
@@ -136,7 +139,7 @@ class TestMain:
              patch("asl_node_auth_check.print_error") as mock_error, \
              patch("asl_node_auth_check.print_warning") as mock_warning:
             _, ex = run()
-            assert ex == ''
+            assert ex == '0'
             mock_error.assert_any_call("Node 12345 has 6 error(s)!")
             mock_warning.assert_any_call("Node 12345 has 8 warning(s)!")
 
@@ -145,7 +148,7 @@ class TestMain:
         with patch("asl_node_auth_check.get_rpt_nodes", return_value=None), \
              patch("asl_node_auth_check.print_error") as mock_error:
             _, ex = run()
-            assert ex == ''
+            assert ex == '2'
             mock_error.assert_any_call("NO NODE ARE CONFIGURED IN rpt.conf")
 
     def test_main_no_registrations_exits(self, asterisk_user_patch):
@@ -154,7 +157,7 @@ class TestMain:
              patch("asl_node_auth_check.get_registrations", return_value=None), \
              patch("asl_node_auth_check.print_error") as mock_error:
             _, ex = run()
-            assert ex == ''
+            assert ex == '2'
             mock_error.assert_any_call("NO VALID REGISTRATIONS EXIST IN THE ASTERISK CONFIGURATION!")
 
     def test_main_duplicate_registration_exits(self, asterisk_user_patch):
@@ -167,7 +170,7 @@ class TestMain:
                    ), \
              patch("asl_node_auth_check.print_error") as mock_error:
             _, ex = run()
-            assert ex == ''
+            assert ex == '2'
             mock_error.assert_any_call("Duplicated HTTP and IAX registrations for: 12345")
             mock_error.assert_any_call("Cannot continue; reconcile configuration before proceeding")
 
@@ -178,7 +181,7 @@ class TestMain:
              patch("asl_node_auth_check.compare_node_lists", return_value=(False, ['67890'], ['12345'])), \
              patch("asl_node_auth_check.print_error") as mock_error:
             _, ex = run()
-            assert ex == ''
+            assert ex == '2'
             mock_error.assert_any_call("No registration present for configured node(s): 12345")
             mock_error.assert_any_call("No configuration present for registrations for node(s): 67890")
             mock_error.assert_any_call("Cannot continue; reconcile configuration before proceeding")

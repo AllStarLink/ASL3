@@ -6,6 +6,7 @@ PR changes covered:
   2. reg_since (regseconds) is None                  -> error + early return
 """
 
+import copy
 import importlib.machinery
 import importlib.util
 import os
@@ -362,38 +363,45 @@ class TestCheckNodeStatusReginfoCombined(unittest.TestCase):
         # stats=None gives a warning and early return
         self.assertEqual(n_warnings, 1)
 
-    def test_none_reginfo_and_none_bindport_accumulates_errors(self):
-        """Both a missing bindport and a None reginfo contribute errors; the
-        final count must be >= 2 (bindport failures + reginfo failure)."""
+    def test_none_reginfo_and_none_bindport_counts_reginfo_only(self):
+        """A missing bindport assumes the default 4569 (#207), which matches
+        the registered port, so only the None reginfo counts as an error."""
         n_errors, n_warnings = self._run(
             bindport=None,
             stats=_VALID_STATS,
             reginfo=None,
         )
-        # bindport=None triggers 2 errors (None check + UDP-port mismatch),
-        # and reginfo=None triggers 1 more → total >= 2
-        self.assertGreaterEqual(n_errors, 2)
+        self.assertEqual(n_errors, 1)
 
-    def test_empty_reginfo_and_none_bindport_accumulates_errors(self):
-        """Both a missing bindport and an empty reginfo contribute errors; the
-        final count must be >= 2."""
+    def test_empty_reginfo_and_none_bindport_counts_reginfo_only(self):
+        """A missing bindport adds no error; the empty reginfo gives one."""
         n_errors, n_warnings = self._run(
             bindport=None,
             stats=_VALID_STATS,
             reginfo=[],
         )
-        self.assertGreaterEqual(n_errors, 2)
+        self.assertEqual(n_errors, 1)
 
-    def test_missing_regseconds_and_none_bindport_accumulates_errors(self):
-        """Both a missing bindport and missing 'regseconds' contribute errors; the
-        final count must be >= 2."""
+    def test_missing_regseconds_and_none_bindport_counts_reginfo_only(self):
+        """A missing bindport adds no error; missing 'regseconds' gives one."""
         n_errors, n_warnings = self._run(
             bindport=None,
             stats=_VALID_STATS,
             reginfo=[{}],
         )
-        self.assertGreaterEqual(n_errors, 2)
+        self.assertEqual(n_errors, 1)
 
+    def test_none_bindport_mismatch_with_non_default_port(self):
+        """With no bindport the default 4569 is still compared, so a node
+        registered on another port reports the mismatch and the reginfo error."""
+        stats = copy.deepcopy(_VALID_STATS)
+        stats["node"]["server"]["udpport"] = 4570
+        n_errors, n_warnings = self._run(
+            bindport=None,
+            stats=stats,
+            reginfo=None,
+        )
+        self.assertEqual(n_errors, 2)
 
 if __name__ == "__main__":
     unittest.main()

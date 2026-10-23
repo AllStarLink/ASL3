@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 
+import argparse
 import glob
 import ipaddress
+import json
 import os
 import pwd
 import re
@@ -20,8 +22,107 @@ from requests.adapters import HTTPAdapter
 _registration_re = re.compile(r'^(\d+):([^@]+)@([a-zA-Z0-9\.]+)$')
 _reghost_re = re.compile(r'^register\.allstarlink\.org$')
 
+TOOL_VERSION = "@@HEAD-DEVELOP@@"
+JSON_SCHEMA = 1
+
+EXIT_OK = 0
+EXIT_ERRORS = 1
+EXIT_ABORTED = 2
+EXIT_PERMISSION = 3
+
+# "result" is the highest-ranked level found; info ranks below ok so that
+# a clean run reports "ok"
+_LEVEL_RANK = {"info": 0, "ok": 1, "warning": 2, "error": 3}
+
+_json_mode = False
+
+def utc_iso(dt):
+    return dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+class Report:
+    """ findings collected during a run, grouped into sections """
+
+    def __init__(self):
+        self.started = datetime.now(UTC)
+        self.sections = []
+        self.section = None
+        self.aborted = False
+
+    def begin_section(self, section_id, node=None):
+        self.section = {
+            "id": section_id,
+            "node": node,
+            "complete": True,
+            "findings": []
+        }
+        self.sections.append(self.section)
+
+    def add(self, finding_id, level, message, data=None):
+        if self.section is None:
+            self.begin_section("run")
+        self.section["findings"].append({
+            "id": finding_id,
+            "level": level,
+            "message": message,
+            "data": data if data is not None else {}
+        })
+
+    def stop_section(self):
+        if self.section is not None:
+            self.section["complete"] = False
+
+    def abort(self):
+        self.aborted = True
+        self.stop_section()
+
+    def counts(self):
+        counts = {level: 0 for level in ("error", "warning", "ok", "info")}
+        for section in self.sections:
+            for finding in section["findings"]:
+                counts[finding["level"]] += 1
+        return counts
+
+    def result(self):
+        if self.aborted:
+            return "aborted"
+        worst = "ok"
+        for level, n in self.counts().items():
+            if n > 0 and _LEVEL_RANK[level] > _LEVEL_RANK[worst]:
+                worst = level
+        return worst
+
+    def exit_status(self):
+        if self.aborted:
+            return EXIT_ABORTED
+        if self.counts()["error"] > 0:
+            return EXIT_ERRORS
+        return EXIT_OK
+
+    def document(self):
+        return {
+            "schema": JSON_SCHEMA,
+            "tool_version": TOOL_VERSION,
+            "started": utc_iso(self.started),
+            "finished": utc_iso(datetime.now(UTC)),
+            "result": self.result(),
+            "counts": self.counts(),
+            "sections": self.sections
+        }
+
+_report = Report()
+
+def report(finding_id, level, msg, data=None):
+    """ record a finding and print it in text mode """
+    _report.add(finding_id, level, msg, data)
+    globals()[f"print_{level}"](msg)
+
+def print_text(msg):
+    if not _json_mode:
+        print(msg)
+
 def print_element_msg(msg, msg_type):
-    print(f"{msg_type:>10}: {msg}")
+    if not _json_mode:
+        print(f"{msg_type:>10}: {msg}")
 
 def print_error(msg):
     print_element_msg(msg,"Error")
@@ -40,8 +141,14 @@ def require_root_or_asterisk():
     user = pwd.getpwuid(uid).pw_name
 
     if user not in ("root", "asterisk"):
-        print_error(f"Access denied: script must run as root or asterisk (current user: {user})\n")
-        sys.exit(1)
+        _report.begin_section("run")
+        report("run.permission_denied", "error",
+               f"Access denied: script must run as root or asterisk (current user: {user})",
+               {"user": user})
+        print_text("")
+        _report.abort()
+        return False
+    return True
 
 def compare_node_lists(configed_nodes, registrations_nodes):
     set_config = set(configed_nodes)
@@ -53,6 +160,13 @@ def compare_node_lists(configed_nodes, registrations_nodes):
     missing_from_regs = set_config - set_regs
 
     return identical, list(missing_from_config), list(missing_from_regs)
+
+def ip_version(ip):
+    """ 4 or 6 for an IP address string, None if it is not one """
+    try:
+        return ipaddress.ip_address(ip).version
+    except ValueError:
+        return None
 
 def reverse_dns(ip):
     """
@@ -97,7 +211,7 @@ def parse_registration_string(s):
 
 def extract_registration_values(filename, regtype):
     """ extract the register => lines from a config file """
-    pattern = re.compile(r'^register\s*=>?\s*(\S+)\s.*$')
+    pattern = re.compile(r'^\s?register\s*=>?\s*(\S+)\s.*$')
     results = []
     with open(filename, 'r') as f:
         for line in f:
@@ -106,7 +220,9 @@ def extract_registration_values(filename, regtype):
                 value = re.sub(r'\s+', '', m.group(1))  # remove all whitespace
                 regtuple = parse_registration_string(value)
                 if regtuple is None:
-                    print_error(f"Invalid registration >> {value} << in {filename}")
+                    report("config.registration_invalid", "info",
+                           f"Invalid or unrelated registration >> {value} << in {filename}",
+                           {"file": filename, "value": value})
                     continue
                 else:
                     regtuple = regtuple + (regtype,)
@@ -128,11 +244,15 @@ def get_registrations():
         r = extract_registration_values(filename, regtype)
 
         if len(r) < 1:
-            print_info(f"{filename} contains no registration lines.")
+            report("config.registration_lines", "info",
+                   f"{filename} contains no registration lines.",
+                   {"file": filename, "count": 0})
             continue
         else:
             i = len(r)
-            print_info(f"{filename} contains {i} registration line(s)")
+            report("config.registration_lines", "info",
+                   f"{filename} contains {i} registration line(s)",
+                   {"file": filename, "count": i})
 
         config_registers.extend(r)
         config_has_one_reg = True
@@ -188,13 +308,19 @@ def get_rpt_nodes(conf_path="/etc/asterisk/rpt.conf"):
                 # Read all lines so we can do a true "scan entire file" pass
                 lines = f.readlines()
         except FileNotFoundError:
-            print_info(f"Config file not found: {path}")
+            report("config.file_unreadable", "info",
+                   f"Config file not found: {path}",
+                   {"file": path, "reason": "not_found"})
             return
         except PermissionError:
-            print_info(f"Permission denied reading: {path}")
+            report("config.file_unreadable", "info",
+                   f"Permission denied reading: {path}",
+                   {"file": path, "reason": "permission_denied"})
             return
         except OSError as e:
-            print_info(f"Error reading {path}: {e}")
+            report("config.file_unreadable", "info",
+                   f"Error reading {path}: {e}",
+                   {"file": path, "reason": "error"})
             return
 
         # ------------------------------------------------------------
@@ -214,7 +340,9 @@ def get_rpt_nodes(conf_path="/etc/asterisk/rpt.conf"):
             if not resolved:
                 # tryinclude is allowed to be missing; include usually isn't
                 if kind == "include":
-                    print_info(f"Include target not found: {inc} (from {path})")
+                    report("config.include_missing", "info",
+                           f"Include target not found: {inc} (from {path})",
+                           {"target": inc, "from": path})
                 continue
 
             include_paths.extend(resolved)
@@ -238,7 +366,9 @@ def get_rpt_nodes(conf_path="/etc/asterisk/rpt.conf"):
                     nodes.append(node)
                     seen_nodes.add(node)
             else:
-                print_info(f"Skipping evaluation of private node {node}")
+                report("config.private_node_skipped", "info",
+                       f"Skipping evaluation of private node {node}",
+                       {"node": node})
 
     scan_file(conf_path)
     return nodes
@@ -247,20 +377,25 @@ def check_node_formedness(node,reghost):
     """ validate node and reghost """
     n_errors = 0
     n_warnings = 0
+    data = {"node": node, "reghost": reghost}
 
     try:
         node_int = int(node)
         if node_int < 2000 or node_int > 999989:
-            print_error(f"Node {node} is outside the numeric range 2000-999989")
+            report("node.well_formed", "error",
+                   f"Node {node} is outside the numeric range 2000-999989", data)
             n_errors += 1
 
     except Exception as e:
-        print_error(f"Registration has \"node\" {node} which is not a number")
+        report("node.well_formed", "error",
+               f"Registration has \"node\" {node} which is not a number", data)
         n_errors += 1
 
     m = _reghost_re.match(reghost)
     if m is None:
-        print_error(f"Registration has a reghost of '{reghost}' which is not 'register.allstarlink.org'")
+        report("node.well_formed", "error",
+               f"Registration has a reghost of '{reghost}' which is not 'register.allstarlink.org'",
+               data)
         n_errors += 1
 
     return n_errors, n_warnings
@@ -316,20 +451,30 @@ def check_iax_registration(node):
     host, myip, state = find_iax_registration(node)
 
     if host is None:
-        print_error(f"There is no apparent IAX registration attempt for node {node}")
+        report("node.registration_state", "error",
+               f"There is no apparent IAX registration attempt for node {node}",
+               {"type": "IAX", "state": None})
         return False
 
     if not state == "Registered":
-        print_error(f"IAX registration state is {state}")
+        report("node.registration_state", "error",
+               f"IAX registration state is {state}",
+               {"type": "IAX", "state": state})
         return False
 
-    print_ok(f"IAX registration state is {state}")
-    print_ok(f"Perceived IAX IP:PORT for this node is: {myip}")
+    report("node.registration_state", "ok",
+           f"IAX registration state is {state}",
+           {"type": "IAX", "state": state})
+    report("node.perceived_address", "ok",
+           f"Perceived IAX IP:PORT for this node is: {myip}",
+           {"address": myip})
 
     host = host.split(":")[0]
     reghost_name = reverse_dns(host)
 
-    print_ok(f"Registered to {reghost_name} - {host}")
+    report("node.registrar", "ok",
+           f"Registered to {reghost_name} - {host}",
+           {"name": reghost_name, "ip": host})
     return True
 
 def find_http_registration(node):
@@ -384,19 +529,29 @@ def check_http_registration(node):
     host, myip, state = find_http_registration(node)
 
     if host is None:
-        print_error(f"There is no apparent HTTP registration attempt for node {node}")
+        report("node.registration_state", "error",
+               f"There is no apparent HTTP registration attempt for node {node}",
+               {"type": "HTTP", "state": None})
         return False
 
     if not state == "Registered":
-        print_error(f"HTTP registration state is {state}")
+        report("node.registration_state", "error",
+               f"HTTP registration state is {state}",
+               {"type": "HTTP", "state": state})
         return False
 
-    print_ok(f"HTTP registration state is {state}")
-    print_ok(f"Perceived IAX IP:PORT for this node is: {myip}")
+    report("node.registration_state", "ok",
+           f"HTTP registration state is {state}",
+           {"type": "HTTP", "state": state})
+    report("node.perceived_address", "ok",
+           f"Perceived HTTP IP:PORT for this node is: {myip}",
+           {"address": myip})
 
     reghost_name = reverse_dns(host.split(":")[0])
     host = host.split(":")[0]
-    print_ok(f"Registered to {reghost_name} - {host}")
+    report("node.registrar", "ok",
+           f"Registered to {reghost_name} - {host}",
+           {"name": reghost_name, "ip": host})
     return True
 
 def get_iax_bindport(filename="/etc/asterisk/iax.conf"):
@@ -406,7 +561,7 @@ def get_iax_bindport(filename="/etc/asterisk/iax.conf"):
     and returns the number as an int.
     Returns None if not found or malformed.
     """
-    pattern = re.compile(r'^bindport\s*=\s*(\d+)')
+    pattern = re.compile(r'^\s*bindport\s*=\s*(\d+)')
 
     try:
         with open(filename, "r") as f:
@@ -417,7 +572,9 @@ def get_iax_bindport(filename="/etc/asterisk/iax.conf"):
     except OSError:
         return None
 
-    print_error("binddport does not appear to be set in iax.conf")
+    report("node.bindport_missing", "info",
+           "binddport does not appear to be set in iax.conf, default is 4569",
+           {"file": filename})
     return None
 
 def get_node_stats(node):
@@ -453,35 +610,47 @@ def check_node_status(node):
 
     bind_udpport = get_iax_bindport()
     if bind_udpport is None:
-        n_errors += 1
+        bind_udpport = 4569
 
     stats = get_node_stats(node)
 
     if stats is None:
-        print_error(f"No stats available... cannot continue this check set")
+        report("node.stats_unavailable", "error",
+               f"No stats available... cannot continue this check set",
+               {"reason": "no_stats"})
         n_warnings += 1
         return n_errors, n_warnings
-    
+
     stats_node = stats.get('node') if isinstance(stats, dict) else None
     if not isinstance(stats_node, dict):
-        print_error("Node stats are unavailable in the response.")
+        report("node.stats_unavailable", "error",
+               "Node stats are unavailable in the response.",
+               {"reason": "no_node"})
         n_errors += 1
         return n_errors, n_warnings
 
     stats_server = stats_node.get('server')
     if not isinstance(stats_server, dict):
-        print_error("Node server stats are unavailable in the response.")
+        report("node.stats_unavailable", "error",
+               "Node server stats are unavailable in the response.",
+               {"reason": "no_server"})
         n_errors += 1
         return n_errors, n_warnings
 
     stats_udpport = stats_server.get('udpport')
+    udp_data = {"registered_port": stats_udpport, "bindport": bind_udpport}
     if stats_udpport is None:
-        print_error("UDP port is missing from node stats.")
+        report("node.stats_unavailable", "error",
+               "UDP port is missing from node stats.",
+               {"reason": "no_udpport"})
         n_errors += 1
     elif stats_udpport == bind_udpport:
-        print_ok(f"Server-set UDP port matches bindport in iax.conf")
+        report("node.udp_port", "ok",
+               f"Server-set UDP port matches bindport in iax.conf", udp_data)
     else:
-        print_error(f"Registered UDP port does not match bindport in iax.conf: {stats_udpport} != {bind_udpport}")
+        report("node.udp_port", "error",
+               f"Registered UDP port does not match bindport in iax.conf: {stats_udpport} != {bind_udpport}",
+               udp_data)
         print_info("Mismatched IAX information might be okay if your router has been configured to")
         print_info("perform the external->internal port forwarding.  The \"Nodeping\" status, below,")
         print_info("can be used to confirm inbound connectivity.")
@@ -489,28 +658,44 @@ def check_node_status(node):
 
     node_reginfo = get_node_regtime(node)
     if node_reginfo is None or len(node_reginfo) == 0:
-        print_error(f"No registration information available.")
+        report("node.stats_unavailable", "error",
+               f"No registration information available.",
+               {"reason": "no_registration_info"})
         n_errors += 1
         return n_errors, n_warnings
     reg_since = node_reginfo[0].get('regseconds')
     if reg_since is None:
-        print_error(f"Registration information is missing 'regseconds' field.")
+        report("node.stats_unavailable", "error",
+               f"Registration information is missing 'regseconds' field.",
+               {"reason": "no_regseconds"})
         n_errors += 1
         return n_errors, n_warnings
 
     reg_since_dt = datetime.fromtimestamp(reg_since, UTC)
     reg_since_str = reg_since_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+    reg_data = {"registered_at": utc_iso(reg_since_dt)}
     if reg_since_dt < datetime.now(UTC) - timedelta(minutes=10):
-        print_error(f"Node not registered in last 10 minutes: {reg_since_str}")
+        report("node.registered_recently", "error",
+               f"Node not registered in last 10 minutes: {reg_since_str}", reg_data)
         n_errors += 1
     else:
-        print_ok(f"Node registration within 10 minutes: {reg_since_str}")
+        report("node.registered_recently", "ok",
+               f"Node registration within 10 minutes: {reg_since_str}", reg_data)
 
     iptime = stats_node.get('iptime')
     if iptime:
-        print_info(f"Last time IP changed was {iptime} UTC")
+        # stats reports "YYYY-MM-DD HH:MM:SS" in UTC; pass anything else through
+        try:
+            changed_at = utc_iso(datetime.strptime(iptime, "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC))
+        except (TypeError, ValueError):
+            changed_at = iptime
+        report("node.ip_last_changed", "info",
+               f"Last time IP changed was {iptime} UTC",
+               {"changed_at": changed_at})
     else:
-        print_warning("Last time IP change is unavailable in node stats")
+        report("node.ip_last_changed", "warning",
+               "Last time IP change is unavailable in node stats",
+               {"changed_at": None})
         n_warnings += 1
 
     return n_errors, n_warnings
@@ -531,26 +716,33 @@ def get_node_ping(node):
 def check_node_reachability(node):
     """ checks inbound node reachability """
     node_check = get_node_ping(node)
+    fid = "node.inbound_reachability"
     if node_check is None:
-        print_warning("Nodeping is not responding - rate-limited or it's down")
+        report(fid, "warning", "Nodeping is not responding - rate-limited or it's down",
+               {"status": "nodeping_unavailable", "rtt_ms": None})
         return 0,1
 
     if node_check['ipv4']['status'] == "unregistered" or node_check['ipv4']['rc'] == -9:
-        print_warning("Node is not perceived as registered; not tested")
+        report(fid, "warning", "Node is not perceived as registered; not tested",
+               {"status": "not_registered", "rtt_ms": None})
         return 0,1
 
     status = node_check['ipv4']['status']
     if status == "unreachable":
-        print_error("Incoming connections to IAX from other nodes failed; client IP or firewall issue")
+        report(fid, "error",
+               "Incoming connections to IAX from other nodes failed; client IP or firewall issue",
+               {"status": "unreachable", "rtt_ms": None})
         return 1,0
 
     if status == "ok":
         pingms = node_check['ipv4']['pingms']
-        print_ok(f"Incoming connections to IAX from other nodes is successful")
+        report(fid, "ok", f"Incoming connections to IAX from other nodes is successful",
+               {"status": "ok", "rtt_ms": pingms})
         print_info(f"IAX ping test has a roundtrip time of {pingms}ms")
         return 0,0
 
-    print_warning("Nodeping is returning something I don't understand")
+    report(fid, "warning", "Nodeping is returning something I don't understand",
+           {"status": "unknown", "rtt_ms": None})
     return 0,1
 
 def get_remote_ip_http(url):
@@ -654,86 +846,142 @@ def check_remote_ip_perception():
     for url in remote_http_checks:
         ip = get_remote_ip_http(url)
         if not ip is None:
-            print_info(f"IP from {url} reports: {ip}")
+            report("public_ip.http_probe", "info", f"IP from {url} reports: {ip}",
+                   {"url": url, "ip": ip})
             probed_ips_http.append(ip)
         else:
-            print_warning(f"IP test to {url} failed")
+            report("public_ip.http_probe", "warning", f"IP test to {url} failed",
+                   {"url": url, "ip": None})
 
     for host in remote_udp_checks:
         ip = udp_ping(host)
         if not ip is None:
-            print_info(f"IP from {host} reports: {ip}")
+            report("public_ip.iax_probe", "info", f"IP from {host} reports: {ip}",
+                   {"host": host, "ip": ip})
             probed_ips_iax.append(ip)
         else:
-            print_warning(f"IP test to {host} failed")
+            report("public_ip.iax_probe", "warning", f"IP test to {host} failed",
+                   {"host": host, "ip": None})
 
     probed_ips_http = set(probed_ips_http)
     probed_ips_iax = set(probed_ips_iax)
 
+    http_data = {"ips": sorted(probed_ips_http)}
     if len(probed_ips_http) == 1:
-        print_ok("HTTP IP probes have consensus on the same perceived IP")
+        report("public_ip.http_consensus", "ok",
+               "HTTP IP probes have consensus on the same perceived IP", http_data)
     else:
-        print_error("HTTP IP probes DO NOT have consensus on the same perceived IP! CGNAT?")
+        report("public_ip.http_consensus", "error",
+               "HTTP IP probes DO NOT have consensus on the same perceived IP! CGNAT?", http_data)
 
+    iax_data = {"ips": sorted(probed_ips_iax)}
     if len(probed_ips_iax) == 1:
-        print_ok("IAX IP probes have consensus on the same perceived IP")
+        report("public_ip.iax_consensus", "ok",
+               "IAX IP probes have consensus on the same perceived IP", iax_data)
     else:
-        print_error("IAX IP probes DO NOT have consensus on the same perceived IP! CGNAT?")
+        report("public_ip.iax_consensus", "error",
+               "IAX IP probes DO NOT have consensus on the same perceived IP! CGNAT?", iax_data)
+
+    # Each protocol agrees with itself; compare the two (#198). The UDP
+    # probes are IPv4 only, so an IPv6 HTTP address says nothing about NAT.
+    if len(probed_ips_http) == 1 and len(probed_ips_iax) == 1:
+        http_ip = next(iter(probed_ips_http))
+        iax_ip = next(iter(probed_ips_iax))
+        data = {"http_ip": http_ip, "iax_ip": iax_ip}
+        if ip_version(http_ip) != 4 or ip_version(iax_ip) != 4:
+            report("public_ip.http_iax_match", "info",
+                   f"HTTP ({http_ip}) and IAX ({iax_ip}) perceived IPs not compared; not both IPv4",
+                   data)
+        elif http_ip != iax_ip:
+            report("public_ip.http_iax_match", "warning",
+                   f"HTTP and IAX probes perceive different IPs ({http_ip} != {iax_ip}); likely behind Carrier-Grade NAT (CGNAT)",
+                   data)
+        else:
+            report("public_ip.http_iax_match", "ok",
+                   f"HTTP and IAX probes perceive the same IP ({http_ip})", data)
 
 
 
-def main():
+def main(only_node=None):
 
-    print("\n-----===== AllStarLink Node Authentication Check =====-----\n")
-    print("Checking configuration:")
+    print_text("\n-----===== AllStarLink Node Authentication Check =====-----\n")
+    print_text("Checking configuration:")
+    _report.begin_section("config")
 
     configed_nodes = get_rpt_nodes()
-    if configed_nodes is None:
-        print_error("NO NODE ARE CONFIGURED IN rpt.conf")
+    if not configed_nodes:
+        report("config.no_nodes", "error", "NO NODE ARE CONFIGURED IN rpt.conf")
         print_error("RUN asl-menu OR INSPECT THE CONFIG FILES")
-        print("")
-        sys.exit()
+        print_text("")
+        _report.abort()
+        return _report.exit_status()
 
     configed_nodes_string = ", ".join(configed_nodes)
-    print_info(f"rpt.conf has configuration for: {configed_nodes_string}")
+    report("config.nodes", "info",
+           f"rpt.conf has configuration for: {configed_nodes_string}",
+           {"nodes": configed_nodes})
 
     registrations = (get_registrations())
     if registrations is None:
-        print_error("NO VALID REGISTRATIONS EXIST IN THE ASTERISK CONFIGURATION!")
+        report("config.no_registrations", "error",
+               "NO VALID REGISTRATIONS EXIST IN THE ASTERISK CONFIGURATION!")
         print_error("RUN asl-menu OR INSPECT THE CONFIG FILES")
-        print("")
-        sys.exit()
+        print_text("")
+        _report.abort()
+        return _report.exit_status()
 
     registrations_nodes = [n[0] for n in registrations]
     registration_nodes_string = ", ".join(registrations_nodes)
-    print_info(f"Registrations present for configured node(s): {registration_nodes_string}")
+    report("config.registrations", "info",
+           f"Registrations present for configured node(s): {registration_nodes_string}",
+           {"nodes": registrations_nodes})
 
     counts = Counter(registrations_nodes)
     duplicates = [s for s, count in counts.items() if count >= 2]
     if duplicates != []:
         duplicates_string = ", ".join(duplicates)
-        print_error(f"Duplicated HTTP and IAX registrations for: {duplicates_string}")
+        report("config.duplicate_registrations", "error",
+               f"Duplicated HTTP and IAX registrations for: {duplicates_string}",
+               {"nodes": duplicates})
         print_error(f"Cannot continue; reconcile configuration before proceeding")
-        sys.exit()
+        _report.abort()
+        return _report.exit_status()
 
     identical, missing_from_config, missing_from_regs = compare_node_lists(configed_nodes, registrations_nodes)
     if not identical:
         if len(missing_from_regs) > 0:
             mr = ", ".join(missing_from_regs)
-            print_error(f"No registration present for configured node(s): {mr}")
+            report("config.missing_registration", "error",
+                   f"No registration present for configured node(s): {mr}",
+                   {"nodes": missing_from_regs})
         if len(missing_from_config) > 0:
             mc = ", ".join(missing_from_config)
-            print_error(f"No configuration present for registrations for node(s): {mc}")
+            report("config.missing_configuration", "error",
+                   f"No configuration present for registrations for node(s): {mc}",
+                   {"nodes": missing_from_config})
         print_error(f"Cannot continue; reconcile configuration before proceeding")
-        sys.exit()
+        _report.abort()
+        return _report.exit_status()
 
+    if only_node is not None and only_node not in registrations_nodes:
+        report("config.node_not_found", "error",
+               f"Node {only_node} is not configured on this system",
+               {"node": only_node})
+        _report.abort()
+        return _report.exit_status()
+
+    _report.begin_section("public_ip")
     check_remote_ip_perception()
 
     for node, password, reghost, regtype in registrations:
+        if only_node is not None and node != only_node:
+            continue
+
         total_errors = 0
         total_warnings = 0
 
-        print(f"\nTesting node {node}:")
+        print_text(f"\nTesting node {node}:")
+        _report.begin_section("node", node)
         e, r = check_node_formedness(node, reghost)
 
         if e > 0:
@@ -741,15 +989,19 @@ def main():
         if r > 0:
             total_warnings += r
         if e == 0 and r == 0:
-            print_ok("Node registration config is well-formed")
+            report("node.well_formed", "ok", "Node registration config is well-formed",
+                   {"node": node, "reghost": reghost})
 
-        print_ok(f"Node registration type is {regtype}")
+        report("node.registration_type", "ok", f"Node registration type is {regtype}",
+               {"type": regtype})
 
         regup = is_register_allstarlink_up()
         if regup is True:
-            print_ok("register.allstarlink.org is reachable (via HTTP)")
+            report("node.regserver_reachable", "ok",
+                   "register.allstarlink.org is reachable (via HTTP)")
         else:
-            print_error("register.allstarlink.org is unreachable (via HTTP)")
+            report("node.regserver_reachable", "error",
+                   "register.allstarlink.org is unreachable (via HTTP)")
 
         if regtype == "IAX":
             r = check_iax_registration(node)
@@ -757,8 +1009,10 @@ def main():
             r= check_http_registration(node)
         if r is False:
             total_errors += 1
-            print_info("Stopping node checks due to registration failure")
+            report("node.checks_stopped", "info",
+                   "Stopping node checks due to registration failure")
             print_info("as further information will be unreliable")
+            _report.stop_section()
 
         if r is True:
             e, r = check_node_status(node)
@@ -774,20 +1028,53 @@ def main():
                 total_warnings += r
 
         if total_errors > 0:
-            print("")
+            print_text("")
             print_error(f"Node {node} has {total_errors} error(s)!")
         if total_warnings > 0:
-            print("")
+            print_text("")
             print_warning(f"Node {node} has {total_warnings} warning(s)!")
             print_warning(f"Warnings may or may not be problems depending on configuration")
 
         if total_errors == 0 and total_warnings == 0:
             print_ok(f"No problems detected with node {node}")
 
-        print("")
-def entrypoint():
-    require_root_or_asterisk()
-    main()
-    
+        print_text("")
+
+    return _report.exit_status()
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(
+        prog="asl-node-auth-check",
+        description="Check for Asterisk/app_rpt registration issues")
+    parser.add_argument("--json", action="store_true",
+        help=f"print the results as one JSON document (schema {JSON_SCHEMA})")
+    parser.add_argument("--node", metavar="N",
+        help="check only node N; the configuration checks still run")
+    return parser.parse_args(argv)
+
+def entrypoint(argv=None):
+    global _json_mode, _report
+
+    args = parse_args(argv)
+    _json_mode = args.json
+    _report = Report()
+
+    if not require_root_or_asterisk():
+        status = EXIT_PERMISSION
+    elif _json_mode:
+        try:
+            status = main(args.node)
+        except Exception as e:
+            report("run.internal_error", "error", f"Unexpected error: {e}",
+                   {"type": type(e).__name__})
+            _report.abort()
+            status = EXIT_ABORTED
+    else:
+        status = main(args.node)
+
+    if _json_mode:
+        print(json.dumps(_report.document(), indent=2))
+    sys.exit(status)
+
 if __name__ == "__main__":
     entrypoint()
