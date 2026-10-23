@@ -12,19 +12,40 @@ import tempfile
 
 from datetime import datetime
 from time import sleep
+from urllib.parse import urljoin
 
-_ARN_URL = "https://www.arnewsline.org/s/news.mp3"
+_AAN_PAGE_URL = "https://www.arrl.org/arrl-audio-news"
+
 _SLEEP_AFTER_PLAYBACK_SECONDS = 15
 
+
+def get_aan_url():
+    """Return the URL of the latest ARRL Audio News MP3."""
+    r = requests.get(_AAN_PAGE_URL, timeout=30)
+    if not r:
+        raise Exception(
+            f"Failed to retrieve {_AAN_PAGE_URL} with error {r.status_code}")
+
+    # The latest episode is the first .mp3 link on the page, e.g.
+    # /files/file/News/Audio%20News/AAN-2026-10-2.mp3
+    m = re.search(r'href="([^"]+\.mp3)"', r.text, re.IGNORECASE)
+    if not m:
+        raise Exception(f"No MP3 link found on {_AAN_PAGE_URL}")
+
+    return urljoin(_AAN_PAGE_URL, m.group(1))
 
 def main():
     # get the options from the CLI
     ap = argparse.ArgumentParser(
-        description="Download and play Amateur Radio Newsline")
+        description="Download and play Amateur Radio Newsline or ARRL Audio News")
     ap.add_argument(
         "--node", help="Allstar Node # to play audio", required=True)
     ap.add_argument(
-        "--when", help="When to play in 24 hour format NNNN - not specifying --when will result in the audo playing immediately")
+        "--when", help="When to play in 24 hour format NNNN - not specifying --when will result in the audio playing immediately")
+    ap.add_argument(
+        "--source", help="Change news type - default is Amateur Radio Newsline (arn), alternative is ARRL Audio News (aan)",
+        default="arn", choices=["arn","aan"]
+    )
     ap.add_argument(
         "--debug", help="enable debug-level logging in syslog", action="store_true")
     args = ap.parse_args()
@@ -71,49 +92,51 @@ def main():
         if when < now:
             sys.exit("Error: --when must occur in the future")
 
+    # validate --source
+    _NEWS_URL = "https://www.arnewsline.org/s/news.mp3"
+    if args.source:
+        if not re.search(r"^(arn|aan)$", args.source):
+            sys.exit("Error: Source must be one of arn, aan")
+        if args.source == "aan":
+            try:
+                _NEWS_URL = get_aan_url()
+            except Exception as e:
+                sys.exit(f"Error: {e}")
+
     try:
         mp3_out = tempfile.NamedTemporaryFile(suffix=".mp3")
         log.debug(f"mp3_out: {mp3_out.name}")
 
         # Retrieve the file to a temporary file
-        r = requests.get(_ARN_URL)
+        r = requests.get(_NEWS_URL, timeout=(5, 30))
         if r:
             mp3_out.write(r.content)
         else:
             raise Exception(
                 f"Failed to retrieve ARN file with error {r.status_code}")
 
-        # Convert to WAV since sox on Allstar doesn't have .mp3 support
-        wav_out = tempfile.NamedTemporaryFile(suffix=".wav")
-        log.debug(f"wav_out: {wav_out.name}")
-        wav = f"lame -h -S --decode {mp3_out.name} {wav_out.name}"
-        log.debug(f"Convert MP3 to WAV: {wav}")
-        res = subprocess.run(
-            wav.split(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT
-        )
-        del mp3_out
-
-        if res.returncode != 0:
-            raise Exception(f"COMMAND: {wav}\n\n"
-                            f"OUTPUT:\n{res.stdout.decode()}")
-
-        # Covert WAV to ULAW
+        # Convert MP3 to ulaw for max compatibility
         ulaw_out = tempfile.NamedTemporaryFile(suffix=".ulaw")
         log.debug(f"ulaw_out: {ulaw_out.name}")
-        sox = f"sox -v 0.7 {wav_out.name} -r 8k -c 1 -t ul {ulaw_out.name}"
-        log.debug(f"Convert WAV to ULAW: {sox}")
+        mp3_out.flush()
+        ffmpeg = [
+            "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+            "-i", mp3_out.name,
+            "-af", "highpass=f=300,lowpass=f=3400",
+            "-ar", "8000", "-ac", "1",
+            "-f", "mulaw", ulaw_out.name
+        ]
+        log.debug(f"Convert MP3 to ulaw: {' '.join(ffmpeg)}")
         res = subprocess.run(
-            sox.split(),
+            ffmpeg,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT
         )
-        del wav_out
 
+        del mp3_out
         if res.returncode != 0:
             raise Exception("COMMAND: {0:s}\n\n OUTPUT:\n{1:s}".format(
-                sox, res.stdout.decode()))
+                ' '.join(ffmpeg), res.stdout.decode()))
 
         # Fix perms as temp files are 0600.
         os.chmod(ulaw_out.name, 0o644)

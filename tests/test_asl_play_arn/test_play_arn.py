@@ -137,54 +137,41 @@ def test_bad_URL(play_arn_runner):
     _, exit_mesg = run(["asl-play-arn", "--node", "1234"])
     assert "failed to retrieve arn file" in exit_mesg.lower()
 
-def test_conversion_wav_split_failed(play_arn_runner):
+def test_ffmpeg_args(play_arn_runner):
     run, patch = play_arn_runner
-   
-    # Make the response "falsy"
-    patch["subprocess_run"].side_effect = subprocess.CompletedProcess(
-            args=["lame -h -S --decode input.mp3 output.wav"],
-            returncode=1,
-            stdout=b"",
-            stderr=b"",
-        ),
+    _, exit_msg = run(["asl-play-arn", "--node", "1234"])
+    assert exit_msg == ""
 
-    _, exit_mesg = run(["asl-play-arn", "--node", "1234"])
-    assert "error: command: lame -h -s --decode " in exit_mesg.lower()
-    
-def test_conversion_sox_failed(play_arn_runner):
+    ffmpeg_cmd = patch["subprocess_run"].call_args_list[0].args[0]
+    assert ffmpeg_cmd[0] == "ffmpeg"
+    # filter must be passed unquoted as a single argument
+    af = ffmpeg_cmd.index("-af")
+    assert ffmpeg_cmd[af + 1] == "highpass=f=300,lowpass=f=3400"
+    assert ffmpeg_cmd[-3:-1] == ["-f", "mulaw"]
+    assert ffmpeg_cmd[-1].endswith(".ulaw")
+
+def test_conversion_ffmpeg_failed(play_arn_runner):
     run, patch = play_arn_runner
-   
-    # Make the response "falsy"
+
     patch["subprocess_run"].side_effect = [
         subprocess.CompletedProcess(
-            args=["lame -h -S --decode input.mp3 output.wav"],
-            returncode=0,
-            stdout=b"",
-            stderr=b"",
-        ),
-        subprocess.CompletedProcess(
-            args=["sox -v 0.7 input.wav -r 8k -c 1 -t ul output.ulaw"],
+            args=["ffmpeg"],
             returncode=1,
-            stdout=b"",
+            stdout=b"ffmpeg went boom",
             stderr=b"",
         ),
     ]
+
     _, exit_mesg = run(["asl-play-arn", "--node", "1234"])
-    assert "error: command: sox -v 0.7 " in exit_mesg.lower()
+    assert "error: command: ffmpeg -hide_banner " in exit_mesg.lower()
+    assert "ffmpeg went boom" in exit_mesg.lower()
 
 def test_conversion_ast_play_failed(play_arn_runner):
     run, patch = play_arn_runner
-   
-    # Make the response "falsy"
+
     patch["subprocess_run"].side_effect = [
         subprocess.CompletedProcess(
-            args=["lame -h -S --decode input.mp3 output.wav"],
-            returncode=0,
-            stdout=b"",
-            stderr=b"",
-        ),
-        subprocess.CompletedProcess(
-            args=["sox -v 0.7 input.wav -r 8k -c 1 -t ul output.ulaw"],
+            args=["ffmpeg"],
             returncode=0,
             stdout=b"",
             stderr=b"",
@@ -192,15 +179,47 @@ def test_conversion_ast_play_failed(play_arn_runner):
         subprocess.CompletedProcess(
             args=["/usr/sbin/asterisk",
             "-rx",
-            "rpt playback 12345 output"],
+            "rpt playback 1234 output"],
             returncode=1,
             stdout=b"",
             stderr=b"",
         ),
     ]
-    
-    _, exit_mesg = run(["asl-play-arn", "--node", "1234"])    
+
+    _, exit_mesg = run(["asl-play-arn", "--node", "1234"])
     assert "error: command: /usr/sbin/asterisk -rx rpt playback 1234 " in exit_mesg.lower()
+
+def test_source_aan(play_arn_runner):
+    run, patch = play_arn_runner
+    page = MagicMock(text='<a href="/files/file/News/Audio%20News/AAN-2026-10-2.mp3">AAN</a>')
+    mp3 = MagicMock(content=b"FAKE_MP3_DATA")
+    patch["requests_get"].side_effect = [page, mp3]
+
+    _, exit_msg = run(["asl-play-arn", "--node", "1234", "--source", "aan"])
+    assert exit_msg == ""
+    assert patch["requests_get"].call_args_list[1].args[0] == \
+        "https://www.arrl.org/files/file/News/Audio%20News/AAN-2026-10-2.mp3"
+
+def test_source_aan_page_failed(play_arn_runner):
+    run, patch = play_arn_runner
+    resp = Response()
+    resp.status_code = 500
+    patch["requests_get"].return_value = resp
+
+    _, exit_msg = run(["asl-play-arn", "--node", "1234", "--source", "aan"])
+    assert "failed to retrieve https://www.arrl.org/arrl-audio-news" in exit_msg.lower()
+
+def test_source_aan_no_mp3(play_arn_runner):
+    run, patch = play_arn_runner
+    patch["requests_get"].return_value = MagicMock(text="<html>nothing here</html>")
+
+    _, exit_msg = run(["asl-play-arn", "--node", "1234", "--source", "aan"])
+    assert "no mp3 link found" in exit_msg.lower()
+
+def test_bad_source(play_arn_runner):
+    run, _ = play_arn_runner
+    stderr, _ = run(["asl-play-arn", "--node", "1234", "--source", "xyz"])
+    assert "invalid choice" in stderr.lower()
 
 def test_keyboard_interrupt(play_arn_runner):
     run, patch = play_arn_runner
