@@ -123,6 +123,34 @@ do_a()
     fi
 }
 
+do_aaaa()
+{
+    HOST=$1
+
+    #
+    # node AAAA record
+    #
+    IP6="$(host -t AAAA "${HOST}" ${USE_NS}		\
+	   | grep -v					\
+		  -e "^Using domain server:"		\
+		  -e "^Name:"				\
+		  -e "^Address:"			\
+		  -e "^Aliases:"			\
+		  -e "^$"				\
+	  )"
+    echo ""
+    echo "AAAA ($HOST)"
+    re="^${HOST} has IPv6 address"
+    if [[ ${IP6} =~ $re ]]; then
+	echo "${IP6}"					\
+	| sed -e "s/^${HOST} has IPv6 address //"	\
+	      -e "s/^/  /"
+    else
+	# report no address
+	echo "  No address (AAAA) record"
+    fi
+}
+
 do_txt()
 {
     HOST=$1
@@ -241,6 +269,10 @@ fi
 # -----
 
 do_a $ASL_HOST
+
+# -----
+
+do_aaaa $ASL_HOST
 
 # -----
 
