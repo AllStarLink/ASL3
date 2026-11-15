@@ -260,18 +260,18 @@ class SA818:
     except UnicodeDecodeError:
       logger.debug(line)
       logger.error('Character decode error: Check your baudrate')
+      return None
     return line.rstrip()
 
   def version(self):
     self.send("AT+VERSION")
     time.sleep(0.5)
     reply = self.readline()
-    try:
-      version = re.split(r'[:_]', reply)
-    except ValueError:
-      logger.error('Unable to decode the firmware version')
+    if not reply or not re.fullmatch(r'\+VERSION:[^:_\s]+_[^\s]+', reply):
+      logger.info('SA818 connected; firmware version unavailable')
       return None
 
+    version = re.split(r'[:_]', reply)
     logger.info('Firmware %s, version: %s', version[1], '_'.join(version[2:]))
     return version
 
@@ -571,7 +571,8 @@ def main():
   try:
     radio = SA818(opts.port, opts.speed)
   except (IOError, SystemError) as err:
-    raise SystemExit(err) from None
+    logger.error('%s', err)
+    raise SystemExit(1) from None
 
   if opts.func == 'version':
     radio.version()
