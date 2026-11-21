@@ -147,7 +147,7 @@ class TestCheckNodeReachability(unittest.TestCase):
         ping_response = {
             "ipv4": {
                 "status": "unregistered",
-                "rc": -9
+                "rc": -1
             }
         }
         with patch.object(_mod, 'get_node_ping', return_value=ping_response), \
@@ -157,19 +157,44 @@ class TestCheckNodeReachability(unittest.TestCase):
             self.assertEqual(n_warnings, 1)
             mock_warn.assert_called_once()
 
-    def test_check_node_reachability_unregistered_with_rc_minus_9(self):
-        """RC code -9 (unregistered) produces warning."""
+    def test_check_node_reachability_timeout_rc_minus_9_is_unreachable(self):
+        """RC -9 (POKE timeout) with status unreachable is an error, not unregistered."""
         ping_response = {
             "ipv4": {
-                "status": "other",
+                "status": "unreachable",
                 "rc": -9
             }
         }
         with patch.object(_mod, 'get_node_ping', return_value=ping_response), \
+             patch.object(_mod, 'print_error') as mock_err:
+            n_errors, n_warnings = check_node_reachability("12345")
+            self.assertEqual(n_errors, 1)
+            self.assertEqual(n_warnings, 0)
+            mock_err.assert_called_once()
+
+    def test_check_node_reachability_timeout_rc_minus_13_is_unreachable(self):
+        """RC -13 (POKE timeout, newer nodeping) with status unreachable is an error."""
+        ping_response = {
+            "ipv4": {
+                "status": "unreachable",
+                "rc": -13
+            }
+        }
+        with patch.object(_mod, 'get_node_ping', return_value=ping_response), \
+             patch.object(_mod, 'print_error') as mock_err:
+            n_errors, n_warnings = check_node_reachability("12345")
+            self.assertEqual(n_errors, 1)
+            self.assertEqual(n_warnings, 0)
+            mock_err.assert_called_once()
+
+    def test_check_node_reachability_malformed_response(self):
+        """Response without an ipv4 object produces the unknown warning, not a crash."""
+        with patch.object(_mod, 'get_node_ping', return_value={"version": "1.6"}), \
              patch.object(_mod, 'print_warning') as mock_warn:
             n_errors, n_warnings = check_node_reachability("12345")
             self.assertEqual(n_errors, 0)
             self.assertEqual(n_warnings, 1)
+            self.assertIn("don't understand", mock_warn.call_args[0][0])
 
     def test_check_node_reachability_nodeping_down(self):
         """Nodeping service is down produces warning."""
