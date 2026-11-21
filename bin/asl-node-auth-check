@@ -722,12 +722,15 @@ def check_node_reachability(node):
                {"status": "nodeping_unavailable", "rtt_ms": None})
         return 0,1
 
-    if node_check['ipv4']['status'] == "unregistered" or node_check['ipv4']['rc'] == -9:
+    # Decide on the "status" field only. The "rc" codes are nodeping
+    # internals: rc -9 is a POKE timeout (typically broken port forwarding),
+    # which nodeping reports as "unreachable", not "unregistered".
+    status = node_check.get('ipv4', {}).get('status')
+    if status == "unregistered":
         report(fid, "warning", "Node is not perceived as registered; not tested",
                {"status": "not_registered", "rtt_ms": None})
         return 0,1
 
-    status = node_check['ipv4']['status']
     if status == "unreachable":
         report(fid, "error",
                "Incoming connections to IAX from other nodes failed; client IP or firewall issue",
