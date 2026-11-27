@@ -1,5 +1,6 @@
 """Exercise the SA818 CLI with simulated serial responses; no RF hardware needed."""
 
+import io
 import runpy
 import sys
 import unittest
@@ -14,7 +15,7 @@ DEFAULT_PORTS = runpy.run_path(str(SCRIPT))['SA818'].PORTS
 
 
 class TestSA818(unittest.TestCase):
-    def run_command(self, replies, command=None):
+    def run_command(self, replies, command=None, entry="sa818"):
         instances = []
 
         class FakeSerial:
@@ -34,12 +35,12 @@ class TestSA818(unittest.TestCase):
             def close(self):
                 self.closed = True
 
-        args = ['sa818'] + (command or ['version'])
+        args = [entry] + (command or ['version'])
         with patch.object(serial, 'Serial', FakeSerial), \
                 patch.object(sys, 'argv', args), patch('time.sleep'), \
-                self.assertLogs('SA818', level='INFO') as logs:
+                self.assertLogs("SR110U" if entry == "sr110u" else "SA818", level="INFO") as logs:
             try:
-                runpy.run_path(str(SCRIPT), run_name='__main__')
+                runpy.run_path(str(SCRIPT.with_name(entry)), run_name='__main__')
             except SystemExit as err:
                 status = err.code
             else:
@@ -224,6 +225,41 @@ class TestSA818(unittest.TestCase):
         status, _, ports = self.run_command(replies, self.advanced_command())
         self.assertEqual(status, 1)
         self.assertEqual(len(ports[0].writes), 3)
+
+    def test_dedicated_sr110u_entry_point(self):
+        status, logs, ports = self.run_command(self.advanced_replies(b'+DMOSETGROUP:0\r\n'),
+            ['radio', '--frequency', '445.1250', '--offset', '5', '--ctcss', '103.5,None'], entry='sr110u')
+        self.assertEqual(status, 0)
+        self.assertTrue(all('SR110U:' in line for line in logs))
+        self.assertEqual(ports[0].writes[-1], b'AT+DMOSETGROUP=1,450.1250,445.1250,00,4,13,1\r\n')
+
+    def test_dedicated_sr110u_refuses_other_modules(self):
+        for reply in (b'+VERSION:SA818S_V1.2\r\n', b'+VERSION:SR110U_V303\r\n', b'Wrong command\r\n'):
+            status, _, ports = self.run_command({DEFAULT_PORTS[0]: [b'+DMOCONNECT:0\r\n', reply]},
+                ['volume', '--level', '3'], entry='sr110u')
+            self.assertEqual(status, 1)
+            self.assertFalse(any(b'SETVOLUME' in w for w in ports[0].writes))
+            self.assertTrue(ports[0].closed)
+
+    def test_dedicated_sr110u_cannot_override_protocol(self):
+        with patch.object(serial, 'Serial') as serial_port, \
+                patch.object(sys, 'argv', ['sr110u', '--protocol', 'sa818', 'volume']), \
+                patch('sys.stderr'):
+            with self.assertRaises(SystemExit) as error:
+                runpy.run_path(str(SCRIPT.with_name('sr110u')), run_name='__main__')
+        self.assertEqual(error.exception.code, 2)
+        serial_port.assert_not_called()
+
+    def test_dedicated_sr110u_help_opens_no_port(self):
+        with patch.object(serial, 'Serial') as serial_port, \
+                patch.object(sys, 'argv', ['sr110u', '--help']), patch('sys.stdout', new_callable=io.StringIO) as output:
+            with self.assertRaises(SystemExit) as error:
+                runpy.run_path(str(SCRIPT.with_name('sr110u')), run_name='__main__')
+        self.assertEqual(error.exception.code, 0)
+        self.assertIn('Program SR110U firmware 110U-V223', output.getvalue())
+        self.assertNotIn('filters', output.getvalue())
+        self.assertNotIn('--dcs', output.getvalue())
+        serial_port.assert_not_called()
 
     def test_unavailable_ports(self):
         class UnavailableSerial:

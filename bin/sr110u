@@ -1,0 +1,14 @@
+#!/usr/bin/env python3
+"""Explicit SR110U V223 entry point; share the installed serial implementation.
+
+The protocol cannot be overridden to SA818. All writes retain the exact
+firmware check in the shared implementation. No serial device opens on import.
+"""
+
+from pathlib import Path
+import runpy
+
+
+if __name__ == "__main__":
+    implementation = runpy.run_path(str(Path(__file__).resolve().with_name("sa818")))
+    implementation["main"](protocol="sr110u-v223")

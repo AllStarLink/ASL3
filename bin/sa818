@@ -276,7 +276,7 @@ class SA818:
         firmware = alternate.split(':', 1)[1]
         logger.info('Firmware SR110U, version: %s', firmware)
         return firmware
-      logger.info('SA818 connected; firmware version unavailable')
+      logger.info('Radio connected; firmware version unavailable')
       return None
 
     version = re.split(r'[:_]', reply)
@@ -535,8 +535,11 @@ def set_loglevel():
     logger.warning('Loglevel error: %s', loglevel)
 
 
-def format_codes():
+def format_codes(protocol=None):
   ctcss = textwrap.wrap(', '.join(CTCSS[1:]))
+  if protocol == 'sr110u-v223':
+    return ('Specify independent TX,RX CTCSS tones, or None for no tone.\n'
+            '> Example: --ctcss 103.5,None\n\nCTCSS codes:\n' + '\n'.join(ctcss))
   dcs = textwrap.wrap(', '.join(DCS_CODES))
 
   codes = (
@@ -552,10 +555,10 @@ def format_codes():
   return ''.join(codes)
 
 
-def command_parser():
+def command_parser(protocol=None):
   parser = argparse.ArgumentParser(
-    description="generate configuration for switch port",
-    epilog=format_codes(),
+    description=("Program SR110U firmware 110U-V223" if protocol else "Program SA818-compatible radio modules"),
+    epilog=format_codes(protocol),
     formatter_class=argparse.RawDescriptionHelpFormatter,
   )
   parser.add_argument("--debug", action="store_true", default=False)
@@ -563,7 +566,7 @@ def command_parser():
                       help="Serial port [default: linux console port]")
   parser.add_argument('--speed', type=int, choices=BAUD_RATES, default=DEFAULT_BAUDRATE,
                       help="Connection speed")
-  parser.add_argument('--protocol', choices=('sa818', 'sr110u-v223'), default='sa818',
+  parser.add_argument('--protocol', choices=(protocol,) if protocol else ('sa818', 'sr110u-v223'), default=protocol or 'sa818',
                       help='Radio command dialect; SR110U profile verifies firmware before writing')
   subparsers = parser.add_subparsers()
 
@@ -580,11 +583,14 @@ def command_parser():
   code_group = p_radio.add_mutually_exclusive_group()
   code_group.add_argument("--ctcss", default=None, type=type_ctcss,
                           help="CTCSS (PL Tone) \"None\" for no CTCSS [default: %(default)s]")
-  code_group.add_argument("--dcs", default=None, type=type_dcs,
-                          help=("DCS code must be the number followed by [N normal] or "
-                                "[I inverse]  [default: %(default)s]"))
-  p_radio.add_argument("--tail", default=None, type=openclose,
-                       help="Close CTCSS Tail Tone (Open/Close)")
+  if protocol is None:
+    code_group.add_argument("--dcs", default=None, type=type_dcs,
+                            help=("DCS code must be the number followed by [N normal] or "
+                                  "[I inverse]  [default: %(default)s]"))
+    p_radio.add_argument("--tail", default=None, type=openclose,
+                         help="Close CTCSS Tail Tone (Open/Close)")
+  else:
+    p_radio.set_defaults(dcs=None, tail=None)
 
   p_radio.add_argument('--sr110u-flags', type=int, choices=range(8), default=None,
                        help='V223 only: bit0 busy lock, bit1 companding, bit2 low power; default 1')
@@ -603,16 +609,17 @@ def command_parser():
   p_volume.add_argument("--level", type=type_level, default=4,
                         help="Volume value (1 to 8) [default: %(default)s]")
 
-  p_filter = subparsers.add_parser("filters", aliases=['filter'], help="Enable/Disable filters")
-  p_filter.set_defaults(func="filters")
-  p_filter.add_argument("--emphasis", type=enabledisable,
-                        help="[Pr/De]-emphasis (Enable/Disable) [default: disable]")
-  p_filter.add_argument("--highpass", type=enabledisable,
-                        help="High pass filter (Enable/Disable) [default: disable]")
-  p_filter.add_argument("--lowpass", type=enabledisable,
-                        help="Low pass filters (Enable/Disable) [default: disable]")
+  if protocol is None:
+    p_filter = subparsers.add_parser("filters", aliases=['filter'], help="Enable/Disable filters")
+    p_filter.set_defaults(func="filters")
+    p_filter.add_argument("--emphasis", type=enabledisable,
+                          help="[Pr/De]-emphasis (Enable/Disable) [default: disable]")
+    p_filter.add_argument("--highpass", type=enabledisable,
+                          help="High pass filter (Enable/Disable) [default: disable]")
+    p_filter.add_argument("--lowpass", type=enabledisable,
+                          help="Low pass filters (Enable/Disable) [default: disable]")
 
-  p_version = subparsers.add_parser("version", help="Show the firmware version of the SA818")
+  p_version = subparsers.add_parser("version", help="Show the connected module firmware identity")
   p_version.set_defaults(func="version")
 
   try:
@@ -621,17 +628,16 @@ def command_parser():
     parser.error(str(err))
 
   if not hasattr(opts, 'func'):
-    print('sa818: error: the following arguments are required: {radio,volume,filters,version,advanced}\n'
-          'use --help for more informatiion',
-          file=sys.stderr)
-    raise SystemExit('Argument Error') from None
+    parser.error('a command is required; use --help for available commands')
 
   return opts
 
 
-def main():
+def main(protocol=None):
+  global logger
+  logger = logging.getLogger('SR110U' if protocol == 'sr110u-v223' else 'SA818')
   set_loglevel()
-  opts = command_parser()
+  opts = command_parser(protocol)
 
   if opts.debug:
     logger.setLevel(logging.DEBUG)
