@@ -247,7 +247,7 @@ class SA818:
     try:
       self.serial.write(data)
     except serial.SerialException as err:
-      logger.error(err)
+      raise SystemError(f'Serial write failed: {err}') from err
 
   def readline(self):
     try:
@@ -260,18 +260,26 @@ class SA818:
     except UnicodeDecodeError:
       logger.debug(line)
       logger.error('Character decode error: Check your baudrate')
-    return line.rstrip()
+      return None
+    # Some modules pad replies with NUL bytes, including before the next line.
+    return line.strip("\x00\r\n ")
 
   def version(self):
     self.send("AT+VERSION")
     time.sleep(0.5)
     reply = self.readline()
-    try:
-      version = re.split(r'[:_]', reply)
-    except ValueError:
-      logger.error('Unable to decode the firmware version')
+    if not reply or not re.fullmatch(r'\+VERSION:[^:_\s]+_[^\s]+', reply):
+      self.send('AT+DMOVERQ')
+      time.sleep(0.5)
+      alternate = self.readline()
+      if alternate and re.fullmatch(r'\+DMOVERQ:(?:SR)?110U-V[0-9]+', alternate):
+        firmware = alternate.split(':', 1)[1]
+        logger.info('Firmware SR110U, version: %s', firmware)
+        return firmware
+      logger.info('Radio connected; firmware version unavailable')
       return None
 
+    version = re.split(r'[:_]', reply)
     logger.info('Firmware %s, version: %s', version[1], '_'.join(version[2:]))
     return version
 
@@ -294,7 +302,8 @@ class SA818:
     time.sleep(1)
     response = self.readline()
     if response != '+DMOSETGROUP:0':
-      logger.error('SA818 programming error')
+      detail = ' (parameter out of range; check the physical module band)' if response == '+DMOSETGROUP:1' else ''
+      raise SystemError(f'SA818 programming error: expected +DMOSETGROUP:0, received {response!r}{detail}')
     else:
       bw_label = ['Narrow', 'Wide'][bw]
       if ctcss:
@@ -316,6 +325,54 @@ class SA818:
     elif tail is not None:
       logger.warning('Ignoring "--tail" specified without ctcss')
 
+  def set_sr110u_radio(self, frequency, offset, bw, squelch, ctcss, dcs, tail, flags=1):
+    """Legacy V223 dialect used by the SRFRS programmer, not the SA818 layout.
+
+    Frequencies are RX,TX; tone fields are RX,TX. The older programmer's
+    TX,RX ordering caused an operator-reported frequency reversal on V223.
+    FLAG bits: busy-lock (0), companding (1), low power (2). Default 1
+    preserves the original programmer selection.
+    Newer SR110U documentation differs; require the verified firmware profile.
+    """
+    if dcs is not None or tail is not None:
+      raise SystemError('SR110U V223 profile supports CTCSS/none, not DCS or configurable tail')
+    if not (400 <= frequency <= 480 and 400 <= frequency + offset <= 480):
+      raise SystemError('SR110U UHF frequencies must be within 400-480 MHz')
+    tx, rx = ctcss or ('0000', '0000')
+    command = (f'{self.SETGRP}={bw},{frequency:.4f},{frequency + offset:.4f},'
+               f'{int(rx):02d},{squelch},{int(tx):02d},{flags}')
+    self.send(command)
+    time.sleep(1)
+    response = self.readline()
+    if response != '+DMOSETGROUP:0':
+      raise SystemError(f'SR110U programming error: expected +DMOSETGROUP:0, received {response!r}')
+    logger.info('%s SR110U legacy channel command accepted (TX: %.4f / RX: %.4f)',
+                response, frequency + offset, frequency)
+
+  def set_sr110u_advanced(self, mic, timeout, vox, power_saving):
+    """V223 uses the legacy three-parameter MIC command, including TOT minutes.
+
+    Turn VOX off first, and enable it only after every other command succeeds.
+    An ACK confirms acceptance, not readback or measured RF behavior.
+    """
+    if vox and power_saving == 'enable':
+      raise SystemError('VOX requires power saving disabled; no advanced settings sent')
+    commands = [
+      ('DMOSETVOX', '0'),
+      ('DMOSETMIC', f'{mic},0,{timeout}'),  # Scrambler deliberately kept off.
+      ('DMOAUTOPOWCONTR', '0' if power_saving == 'enable' else '1'),
+    ]
+    if vox:
+      commands.append(('DMOSETVOX', str(vox)))
+    for name, value in commands:
+      self.send(f'AT+{name}={value}')
+      time.sleep(1)
+      response = self.readline()
+      if response != f'+{name}:0':
+        raise SystemError(f'SR110U {name} error: expected +{name}:0, received {response!r}; '
+                          'stopped, earlier commands may already have applied')
+      logger.info('%s %s=%s accepted', response, name, value)
+
   def set_filter(self, emphasis, highpass, lowpass):
     _rx = {0: 'enabled', 1: 'disabled'}
     # filters are pre-emphasis, high-pass, low-pass
@@ -324,7 +381,7 @@ class SA818:
     time.sleep(1)
     response = self.readline()
     if response != "+DMOSETFILTER:0":
-      logger.error('SA818 set filter error')
+      raise SystemError(f'SA818 set filter error: expected +DMOSETFILTER:0, received {response!r}')
     else:
       logger.info("%s filters [Pre/De]emphasis: %s, high-pass: %s, low-pass: %s",
                   response, _rx[emphasis], _rx[highpass], _rx[lowpass])
@@ -335,7 +392,7 @@ class SA818:
     time.sleep(1)
     response = self.readline()
     if response != "+DMOSETVOLUME:0":
-      logger.error('SA818 set volume error')
+      raise SystemError(f'SA818 set volume error: expected +DMOSETVOLUME:0, received {response!r}')
     else:
       logger.info("%s Volume level: %d, OK", response, level)
 
@@ -346,7 +403,7 @@ class SA818:
     time.sleep(1)
     response = self.readline()
     if response != "+DMOSETTAIL:0":
-      logger.error('SA818 set filter error')
+      raise SystemError(f'SA818 set tail error: expected +DMOSETTAIL:0, received {response!r}')
     else:
       logger.info("%s tail: %s", response, _oc[tail])
 
@@ -479,8 +536,11 @@ def set_loglevel():
     logger.warning('Loglevel error: %s', loglevel)
 
 
-def format_codes():
+def format_codes(protocol=None):
   ctcss = textwrap.wrap(', '.join(CTCSS[1:]))
+  if protocol == 'sr110u-v223':
+    return ('Specify independent TX,RX CTCSS tones, or None for no tone.\n'
+            '> Example: --ctcss 103.5,None\n\nCTCSS codes:\n' + '\n'.join(ctcss))
   dcs = textwrap.wrap(', '.join(DCS_CODES))
 
   codes = (
@@ -496,10 +556,10 @@ def format_codes():
   return ''.join(codes)
 
 
-def command_parser():
+def command_parser(protocol=None):
   parser = argparse.ArgumentParser(
-    description="generate configuration for switch port",
-    epilog=format_codes(),
+    description=("Program SR110U firmware 110U-V223" if protocol else "Program SA818-compatible radio modules"),
+    epilog=format_codes(protocol),
     formatter_class=argparse.RawDescriptionHelpFormatter,
   )
   parser.add_argument("--debug", action="store_true", default=False)
@@ -507,6 +567,8 @@ def command_parser():
                       help="Serial port [default: linux console port]")
   parser.add_argument('--speed', type=int, choices=BAUD_RATES, default=DEFAULT_BAUDRATE,
                       help="Connection speed")
+  parser.add_argument('--protocol', choices=(protocol,) if protocol else ('sa818', 'sr110u-v223'), default=protocol or 'sa818',
+                      help='Radio command dialect; SR110U profile verifies firmware before writing')
   subparsers = parser.add_subparsers()
 
   p_radio = subparsers.add_parser("radio", help='Program the radio (frequency/tone/squelch)')
@@ -522,27 +584,43 @@ def command_parser():
   code_group = p_radio.add_mutually_exclusive_group()
   code_group.add_argument("--ctcss", default=None, type=type_ctcss,
                           help="CTCSS (PL Tone) \"None\" for no CTCSS [default: %(default)s]")
-  code_group.add_argument("--dcs", default=None, type=type_dcs,
-                          help=("DCS code must be the number followed by [N normal] or "
-                                "[I inverse]  [default: %(default)s]"))
-  p_radio.add_argument("--tail", default=None, type=openclose,
-                       help="Close CTCSS Tail Tone (Open/Close)")
+  if protocol is None:
+    code_group.add_argument("--dcs", default=None, type=type_dcs,
+                            help=("DCS code must be the number followed by [N normal] or "
+                                  "[I inverse]  [default: %(default)s]"))
+    p_radio.add_argument("--tail", default=None, type=openclose,
+                         help="Close CTCSS Tail Tone (Open/Close)")
+  else:
+    p_radio.set_defaults(dcs=None, tail=None)
+
+  p_radio.add_argument('--sr110u-flags', type=int, choices=range(8), default=None,
+                       help='V223 only: bit0 busy lock, bit1 companding, bit2 low power; default 1')
+
+  p_advanced = subparsers.add_parser('advanced', help='SR110U V223 advanced controls only')
+  p_advanced.set_defaults(func='advanced')
+  p_advanced.add_argument('--mic', type=int, choices=range(1, 9), required=True)
+  p_advanced.add_argument('--timeout', type=int, choices=range(10), required=True,
+                          help='Transmit timeout: 0 off, 1-9 minutes')
+  p_advanced.add_argument('--vox', type=int, choices=range(9), required=True,
+                          help='0 off, 1-8 sensitivity; enabling can transmit')
+  p_advanced.add_argument('--power-saving', choices=('enable', 'disable'), required=True)
 
   p_volume = subparsers.add_parser("volume", help="Set the volume level")
   p_volume.set_defaults(func="volume")
   p_volume.add_argument("--level", type=type_level, default=4,
                         help="Volume value (1 to 8) [default: %(default)s]")
 
-  p_filter = subparsers.add_parser("filters", aliases=['filter'], help="Enable/Disable filters")
-  p_filter.set_defaults(func="filters")
-  p_filter.add_argument("--emphasis", type=enabledisable,
-                        help="[Pr/De]-emphasis (Enable/Disable) [default: disable]")
-  p_filter.add_argument("--highpass", type=enabledisable,
-                        help="High pass filter (Enable/Disable) [default: disable]")
-  p_filter.add_argument("--lowpass", type=enabledisable,
-                        help="Low pass filters (Enable/Disable) [default: disable]")
+  if protocol is None:
+    p_filter = subparsers.add_parser("filters", aliases=['filter'], help="Enable/Disable filters")
+    p_filter.set_defaults(func="filters")
+    p_filter.add_argument("--emphasis", type=enabledisable,
+                          help="[Pr/De]-emphasis (Enable/Disable) [default: disable]")
+    p_filter.add_argument("--highpass", type=enabledisable,
+                          help="High pass filter (Enable/Disable) [default: disable]")
+    p_filter.add_argument("--lowpass", type=enabledisable,
+                          help="Low pass filters (Enable/Disable) [default: disable]")
 
-  p_version = subparsers.add_parser("version", help="Show the firmware version of the SA818")
+  p_version = subparsers.add_parser("version", help="Show the connected module firmware identity")
   p_version.set_defaults(func="version")
 
   try:
@@ -551,50 +629,72 @@ def command_parser():
     parser.error(str(err))
 
   if not hasattr(opts, 'func'):
-    print('sa818: error: the following arguments are required: {radio,volume,filters,version}\n'
-          'use --help for more informatiion',
-          file=sys.stderr)
-    raise SystemExit('Argument Error') from None
+    parser.error('a command is required; use --help for available commands')
 
   return opts
 
 
-def main():
+def main(protocol=None):
+  global logger
+  logger = logging.getLogger('SR110U' if protocol == 'sr110u-v223' else 'SA818')
   set_loglevel()
-  opts = command_parser()
+  opts = command_parser(protocol)
 
   if opts.debug:
     logger.setLevel(logging.DEBUG)
 
   logger.debug(opts)
+  if opts.protocol != 'sr110u-v223' and (opts.func == 'advanced' or getattr(opts, 'sr110u_flags', None) is not None):
+    logger.error('Advanced controls require --protocol sr110u-v223; no settings sent')
+    raise SystemExit(1)
+  if opts.func == 'advanced' and opts.vox and opts.power_saving == 'enable':
+    logger.error('VOX requires power saving disabled; no settings sent')
+    raise SystemExit(1)
 
   try:
     radio = SA818(opts.port, opts.speed)
   except (IOError, SystemError) as err:
-    raise SystemExit(err) from None
+    logger.error('%s', err)
+    raise SystemExit(1) from None
 
-  if opts.func == 'version':
-    radio.version()
-  elif opts.func == 'radio':
-    radio.set_radio(
-      opts.frequency,
-      opts.offset,
-      opts.bw,
-      opts.squelch,
-      opts.ctcss,
-      opts.dcs,
-      opts.tail
-    )
-  elif opts.func == 'filters':
-    for key in ('emphasis', 'highpass', 'lowpass'):
-      if getattr(opts, key) is not None:
-        break
-    else:
-      logger.error('filters need at least one argument')
-      raise SystemExit('Argument error') from None
-    radio.set_filter(opts.emphasis, opts.highpass, opts.lowpass)
-  elif opts.func == 'volume':
-    radio.set_volume(opts.level)
+  try:
+    if opts.protocol == 'sr110u-v223' and opts.func != 'version':
+      if radio.version() != '110U-V223':
+        raise SystemError('SR110U V223 profile requires firmware 110U-V223; no settings sent')
+      if opts.func == 'filters':
+        raise SystemError('SR110U V223 does not support SA818 filter controls')
+    if opts.func == 'version':
+      radio.version()
+    elif opts.func == 'radio':
+      program = radio.set_sr110u_radio if opts.protocol == 'sr110u-v223' else radio.set_radio
+      program(
+        opts.frequency,
+        opts.offset,
+        opts.bw,
+        opts.squelch,
+        opts.ctcss,
+        opts.dcs,
+        opts.tail,
+        **({"flags": opts.sr110u_flags if opts.sr110u_flags is not None else 1}
+           if opts.protocol == "sr110u-v223" else {})
+      )
+    elif opts.func == 'filters':
+      for key in ('emphasis', 'highpass', 'lowpass'):
+        if getattr(opts, key) is not None:
+          break
+      else:
+        logger.error('filters need at least one argument')
+        raise SystemExit('Argument error') from None
+      radio.set_filter(opts.emphasis, opts.highpass, opts.lowpass)
+    elif opts.func == 'volume':
+      radio.set_volume(opts.level)
+    elif opts.func == 'advanced':
+      radio.set_sr110u_advanced(opts.mic, opts.timeout, opts.vox, opts.power_saving)
+  except (IOError, SystemError) as err:
+    logger.error('%s', err)
+    raise SystemExit(1) from None
+  finally:
+    radio.close()
 
 
 if __name__ == "__main__":
