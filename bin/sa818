@@ -328,7 +328,8 @@ class SA818:
   def set_sr110u_radio(self, frequency, offset, bw, squelch, ctcss, dcs, tail, flags=1):
     """Legacy V223 dialect used by the SRFRS programmer, not the SA818 layout.
 
-    Frequencies are TX,RX as in that programmer; tone fields are RX,TX.
+    Frequencies are RX,TX; tone fields are RX,TX. The older programmer's
+    TX,RX ordering caused an operator-reported frequency reversal on V223.
     FLAG bits: busy-lock (0), companding (1), low power (2). Default 1
     preserves the original programmer selection.
     Newer SR110U documentation differs; require the verified firmware profile.
@@ -338,7 +339,7 @@ class SA818:
     if not (400 <= frequency <= 480 and 400 <= frequency + offset <= 480):
       raise SystemError('SR110U UHF frequencies must be within 400-480 MHz')
     tx, rx = ctcss or ('0000', '0000')
-    command = (f'{self.SETGRP}={bw},{frequency + offset:.4f},{frequency:.4f},'
+    command = (f'{self.SETGRP}={bw},{frequency:.4f},{frequency + offset:.4f},'
                f'{int(rx):02d},{squelch},{int(tx):02d},{flags}')
     self.send(command)
     time.sleep(1)

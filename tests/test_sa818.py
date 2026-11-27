@@ -134,8 +134,36 @@ class TestSA818(unittest.TestCase):
             ['--protocol', 'sr110u-v223', 'radio', '--frequency', '445.1250', '--offset', '5',
              '--bw', '1', '--squelch', '1', '--ctcss', '103.5,None'])
         self.assertEqual(status, 0)
-        self.assertEqual(ports[0].writes[-1], b'AT+DMOSETGROUP=1,450.1250,445.1250,00,1,13,1\r\n')
+        self.assertEqual(ports[0].writes[-1], b'AT+DMOSETGROUP=1,445.1250,450.1250,00,1,13,1\r\n')
         self.assertFalse(any(b'SETTAIL' in w for w in ports[0].writes))
+
+    def test_sr110u_frequency_order_both_entry_points(self):
+        # Explicit wire expectations, not values computed by the implementation.
+        for entry, prefix in (('sr110u', []), ('sa818', ['--protocol', 'sr110u-v223'])):
+            for offset, expected_tx in (('5', '450.1250'), ('-5', '440.1250'), ('0', '445.1250')):
+                for tones, wire_tones in (('103.5,None', ('00', '13')),
+                                          ('None,103.5', ('13', '00'))):
+                    with self.subTest(entry=entry, offset=offset, tones=tones):
+                        status, logs, ports = self.run_command(
+                            self.advanced_replies(b'+DMOSETGROUP:0\r\n'),
+                            prefix + ['radio', '--frequency', '445.1250', '--offset', offset,
+                                      '--bw', '1', '--squelch', '1', '--ctcss', tones], entry=entry)
+                        self.assertEqual(status, 0)
+                        rx_tone, tx_tone = wire_tones
+                        self.assertEqual(ports[0].writes[-1],
+                            f'AT+DMOSETGROUP=1,445.1250,{expected_tx},{rx_tone},1,{tx_tone},1\r\n'.encode())
+                        self.assertTrue(any(f'TX: {expected_tx} / RX: 445.1250' in log for log in logs))
+
+    def test_sa818_keeps_tx_rx_wire_order(self):
+        for offset, expected_tx in (('5', '450.1250'), ('-5', '440.1250'), ('0', '445.1250')):
+            with self.subTest(offset=offset):
+                status, _, ports = self.run_command({DEFAULT_PORTS[0]: [
+                    b'+DMOCONNECT:0\r\n', b'+DMOSETGROUP:0\r\n']},
+                    ['radio', '--frequency', '445.1250', '--offset', offset,
+                     '--bw', '1', '--squelch', '1', '--ctcss', '103.5,None'])
+                self.assertEqual(status, 0)
+                self.assertEqual(ports[0].writes[-1],
+                    f'AT+DMOSETGROUP=1,{expected_tx},445.1250,0013,1,0000\r\n'.encode())
 
     def test_sr110u_requires_exact_firmware(self):
         for version in (b'+DMOVERQ:110U-V303\r\n', b'Wrong command\r\n'):
@@ -231,7 +259,7 @@ class TestSA818(unittest.TestCase):
             ['radio', '--frequency', '445.1250', '--offset', '5', '--ctcss', '103.5,None'], entry='sr110u')
         self.assertEqual(status, 0)
         self.assertTrue(all('SR110U:' in line for line in logs))
-        self.assertEqual(ports[0].writes[-1], b'AT+DMOSETGROUP=1,450.1250,445.1250,00,4,13,1\r\n')
+        self.assertEqual(ports[0].writes[-1], b'AT+DMOSETGROUP=1,445.1250,450.1250,00,4,13,1\r\n')
 
     def test_dedicated_sr110u_refuses_other_modules(self):
         for reply in (b'+VERSION:SA818S_V1.2\r\n', b'+VERSION:SR110U_V303\r\n', b'Wrong command\r\n'):
